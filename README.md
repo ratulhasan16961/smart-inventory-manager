@@ -1,58 +1,34 @@
-# Ratul's Smart Inventory System v6.0 🚀
+# Ratul's Smart Inventory System v7.0
 
-A professional Python-based inventory management application designed to track products for small businesses. This project features a robust SQLite database backend and a clean, user-friendly Graphical User Interface (GUI).
+A professional, enterprise-grade Python application designed to manage inventory, track suppliers, handle multi-item billing and analyze sales data for small to medium businesses. Built with SQLite and dynamic GUI components.
 
 ## ✨ Key Features
 
-📉 Real-time Dashboard: A dynamic table view that stays perfectly synced with the database for instant data access.
-
-🔐 Secure Login: Restricted access with password-protected entry to keep your business data safe.
-
-⚠️ Low Stock Alert: Automatic pop-up notifications for items with low inventory to prevent stock-outs.
-
-📊 Analysis Dashboard: Visual bar charts for stock level comparison and quick decision-making.
-
-🧾 PDF Billing System: Generate professional receipts for customers automatically with date and total amount.
-
-🚚 Supplier Management: A dedicated database to track and manage supplier information and contacts.
-
-📂 Excel Export: Download your entire inventory data in .xlsx format for reporting and offline use.
-
-🌗 Theme Toggle: Switch between Dark and Light modes for better visibility and a modern look.
+- **📊 Live Dashboard Cards:** Real-time counters showing total products, total inventory stock value and low-stock alerts.
+- **🧾 Multi-Item Cart Billing:** Add multiple products to a shopping cart, calculate dynamic grand totals and generate professional PDF customer receipts using ReportLab.
+- **🔐 Role-Based Access Control (RBAC):** Differentiated UI views and action permissions for **Admin** (Full Access) and **Staff** (Billing & View Only).
+- **🔄 Auto-Sequencing ID Logic:** Automatic primary key re-indexing upon product deletion to keep database records neat and contiguous.
+- **🔍 Instant Live Search:** Real-time table filtering by product name or category as you type.
+- **⚠️ Low Stock Alert System:** Automated pop-up warnings and visual table highlights for items at or below safety stock levels.
+- **📈 Analysis Dashboard:** Visual Matplotlib bar charts for inventory volume comparison and quick decision-making.
+- **🚚 Supplier Management:** Dedicated database interface to manage supplier directory and contact information.
+- **📁 CSV Data Export:** One-click data backup and report export in `.csv` format for offline reporting.
+- **🌓 Theme Toggle:** Modern UI with instant switching between Dark and Light visual themes.
 
 ## 🛠️ Tech Stack
 
-Language: Python 3
-
-GUI Library: Tkinter
-
-Database: SQLite3
-
-Visualization: Matplotlib
-
-PDF Engine: ReportLab
+- **Language:** Python 3
+- **GUI Library:** Tkinter
+- **Database:** SQLite3
+- **Data Processing:** Pandas
+- **Visualization:** Matplotlib
+- **PDF Engine:** ReportLab
 
 ## 🚀 How to Run
 
 Follow these steps to get the project up and running on your local machine:
 
 ### 1. Prerequisites
-Make sure you have **Python 3** installed. You can check it by running:
-`python3 --version`
-
-### 2. Install Dependencies
-Run the following command in your terminal:
-`pip3 install pandas matplotlib reportlab`
-
-### 3. Clone the Repository
-Clone this project to your local machine:
-`git clone https://github.com/ratulhasan16961/smart-inventory-manager.git`
-
-### 4. Navigate and Run
-Go to the project folder and run the application:
-`cd smart-inventory-manager`
-`python3 inventory_app.py`
-
-### 🔐 Default Credentials
-* **Username:** admin
-* **Password:** 1234
+Make sure you have **Python 3** installed:
+```bash
+python3 --version
