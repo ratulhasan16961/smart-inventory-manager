@@ -1,34 +1,37 @@
-# Ratul's Smart Inventory System v7.0
+# Enterprise POS & ERP System v7.0
 
-A professional, enterprise-grade Python application designed to manage inventory, track suppliers, handle multi-item billing and analyze sales data for small to medium businesses. Built with SQLite and dynamic GUI components.
+A professional, enterprise-grade Python Desktop application designed to manage product inventory, track customer billing, generate receipts, and analyze sales data for small to medium-sized businesses. Built with SQLite3 and Tkinter.
+
+---
 
 ## ✨ Key Features
 
-- **📊 Live Dashboard Cards:** Real-time counters showing total products, total inventory stock value and low-stock alerts.
-- **🧾 Multi-Item Cart Billing:** Add multiple products to a shopping cart, calculate dynamic grand totals and generate professional PDF customer receipts using ReportLab.
-- **🔐 Role-Based Access Control (RBAC):** Differentiated UI views and action permissions for **Admin** (Full Access) and **Staff** (Billing & View Only).
-- **🔄 Auto-Sequencing ID Logic:** Automatic primary key re-indexing upon product deletion to keep database records neat and contiguous.
-- **🔍 Instant Live Search:** Real-time table filtering by product name or category as you type.
-- **⚠️ Low Stock Alert System:** Automated pop-up warnings and visual table highlights for items at or below safety stock levels.
-- **📈 Analysis Dashboard:** Visual Matplotlib bar charts for inventory volume comparison and quick decision-making.
-- **🚚 Supplier Management:** Dedicated database interface to manage supplier directory and contact information.
-- **📁 CSV Data Export:** One-click data backup and report export in `.csv` format for offline reporting.
-- **🌓 Theme Toggle:** Modern UI with instant switching between Dark and Light visual themes.
+* **📊 Live Dashboard Metrics:** Real-time summary cards showing Total Items, Low Stock Alerts, Total Stock Value ($), and Total Revenue ($).
+* **🛒 Multi-Item POS & Billing Cart:** Scan barcodes or search product IDs, specify quantities, calculate subtotal, apply discounts ($) and taxes (%), and select payment methods (Cash, Card, Mobile Banking).
+* **📄 Automated Receipts & Invoices:** Generates readable receipt pop-ups with options to export/save text-based receipts for customer transactions.
+* **📦 Complete Inventory Management:** Add, delete, and search products with complete details including Buying Price, Selling Price, Stock, Min Alert Level, Batch Number, Barcode, Warehouse location, and Expiry date.
+* **⚠️ Visual Low Stock Alerts:** Automated visual table highlighting in red for items at or below safety stock levels.
+* **📈 Sales Analytics:** Visual bar charts using Matplotlib for real-time revenue and sales overview.
+* **📝 Audit Logging:** Complete audit trail tracking user activities, timestamped actions, and transaction histories.
+* **📁 Data Import & Export:** One-click CSV Export and Import capabilities for offline data reporting and database population.
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Language:** Python 3
-- **GUI Library:** Tkinter
-- **Database:** SQLite3
-- **Data Processing:** Pandas
-- **Visualization:** Matplotlib
-- **PDF Engine:** ReportLab
+* **Language:** Python 3.x
+* **GUI Framework:** Tkinter / ttk
+* **Database:** SQLite3
+* **Data Visualization:** Matplotlib
+* **File Handling:** JSON, CSV, Standard I/O
+
+---
 
 ## 🚀 How to Run
 
-Follow these steps to get the project up and running on your local machine:
-
 ### 1. Prerequisites
-Make sure you have **Python 3** installed:
+
+Ensure you have **Python 3** installed on your system:
+
 ```bash
 python3 --version
