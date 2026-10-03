@@ -2,7 +2,8 @@
 
 A professional, enterprise-grade Python Desktop application designed to manage product inventory, track customer billing, generate receipts, and analyze sales data for small to medium-sized businesses. Built with SQLite3 and Tkinter.
 
----
+<img width="1440" height="900" alt="Screenshot 2026-10-03 at 10 13 19 AM" src="https://github.com/user-attachments/assets/f998a8f3-d362-4e22-a4d7-6c06a2667bad" />
+
 
 ## ✨ Key Features
 
