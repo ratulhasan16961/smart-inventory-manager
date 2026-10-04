@@ -7,7 +7,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
 
-# Optional Matplotlib Integration for Charts
 try:
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -15,15 +14,9 @@ try:
 except ImportError:
     HAS_MATPLOTLIB = False
 
-# ==========================================
-# SECURITY: PASSWORD HASHING HELPER
-# ==========================================
 def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
-# ==========================================
-# DATABASE INITIALIZATION & SCHEMA
-# ==========================================
 def init_db():
     conn = sqlite3.connect("general_inventory.db")
     cursor = conn.cursor()
@@ -124,8 +117,7 @@ def init_db():
             return_date TEXT
         )
     """)
-    
-    # Insert default credentials with SHA256 hashed passwords
+
     cursor.execute("INSERT OR REPLACE INTO users (id, username, password, role) VALUES (1, 'admin', ?, 'Admin')", (hash_password('1234'),))
     cursor.execute("INSERT OR REPLACE INTO users (id, username, password, role) VALUES (2, 'cashier', ?, 'Cashier')", (hash_password('1234'),))
 
@@ -151,9 +143,6 @@ def auto_backup_database():
     except Exception as e:
         print(f"Auto Backup Error: {e}")
 
-# ==========================================
-# CUSTOM MACOS-SAFE CANVAS BUTTON WIDGET
-# ==========================================
 class CanvasButton(tk.Canvas):
     def __init__(self, parent, text, command=None, bg_color="#0d6efd", fg_color="#ffffff", width=110, height=30, **kwargs):
         super().__init__(parent, width=width, height=height, bg=parent["bg"], highlightthickness=0, **kwargs)
@@ -180,9 +169,6 @@ class CanvasButton(tk.Canvas):
     def _on_leave(self, event):
         self.config(cursor="")
 
-# ==========================================
-# STYLED ENTRY FACTORY
-# ==========================================
 def create_styled_entry(parent, width=15, show=None):
     container = tk.Frame(parent, bg="#aaaaaa", bd=1, relief="solid")
     entry = tk.Entry(
@@ -198,9 +184,6 @@ def create_styled_entry(parent, width=15, show=None):
     entry.pack(padx=3, pady=2, fill="both", expand=True)
     return container, entry
 
-# ==========================================
-# MAIN APPLICATION GUI
-# ==========================================
 def main_app(current_user, user_role):
     root = tk.Tk()
     root.title(f"Enterprise POS & ERP System - [{current_user} ({user_role})]")
@@ -222,7 +205,6 @@ def main_app(current_user, user_role):
     style.map("Treeview", background=[("selected", "#0d6efd")], foreground=[("selected", "white")])
     style.configure("TCombobox", fieldbackground="#ffffff", background="#ffffff", foreground="#000000")
 
-    # ----- TOP METRIC CARDS FRAME -----
     cards_frame = tk.Frame(root, bg="#f4f6f9")
     cards_frame.pack(fill="x", padx=15, pady=8)
 
@@ -433,7 +415,6 @@ def main_app(current_user, user_role):
 
     lbl_style = {"bg": "#ffffff", "fg": "#212529", "font": ("Helvetica", 9, "bold")}
 
-    # ----- CUSTOMER BILLING & MULTI-ITEM POS TERMINAL SECTION -----
     bill_frame = tk.LabelFrame(root, text=" Customer Billing & POS Multi-Item Cart ", bg="#ffffff", fg="#0d6efd", font=("Helvetica", 10, "bold"), bd=1, relief="solid")
     bill_frame.pack(fill="x", padx=15, pady=5)
 
@@ -541,7 +522,6 @@ def main_app(current_user, user_role):
         conn = sqlite3.connect("general_inventory.db")
         cursor = conn.cursor()
 
-        # Update Customer Loyalty Points
         if c_phone != "N/A":
             earned_points = int(total_price * 0.01) # 1% loyalty
             cursor.execute("""
@@ -566,7 +546,6 @@ def main_app(current_user, user_role):
         log_action(current_user, f"Processed Sale Invoice: {inv_no} (${total_price:.2f})")
         refresh_table()
 
-        # Receipt Rendering
         rec_win = tk.Toplevel(root)
         rec_win.title("Sales Invoice & Receipt")
         rec_win.geometry("420x560")
@@ -621,7 +600,6 @@ Payment    : {pay_method}
     btn_sell = CanvasButton(bill_frame, text="💳 Process Bill", command=process_sale, bg_color="#198754", fg_color="#ffffff", width=110, height=30)
     btn_sell.grid(row=1, column=10, columnspan=2, padx=8, pady=6)
 
-    # ----- INPUT FORM FRAME -----
     input_frame = tk.LabelFrame(root, text=" Product Entry Form ", bg="#ffffff", fg="#212529", font=("Helvetica", 10, "bold"), bd=1, relief="solid")
     input_frame.pack(fill="x", padx=15, pady=5)
 
@@ -631,7 +609,6 @@ Payment    : {pay_method}
     btn_grid = tk.Frame(input_frame, bg="#ffffff")
     btn_grid.pack(side="right", fill="y", padx=15, pady=10)
 
-    # Row 0
     tk.Label(form_grid, text="Name:", **lbl_style).grid(row=0, column=0, sticky="e", padx=5, pady=5)
     c_name, name_entry = create_styled_entry(form_grid, width=15)
     c_name.grid(row=0, column=1, padx=5, pady=5)
@@ -644,7 +621,6 @@ Payment    : {pay_method}
     c_bp, buying_price_entry = create_styled_entry(form_grid, width=12)
     c_bp.grid(row=0, column=5, padx=5, pady=5)
 
-    # Row 1
     tk.Label(form_grid, text="Selling Price:", **lbl_style).grid(row=1, column=0, sticky="e", padx=5, pady=5)
     c_sp, price_entry = create_styled_entry(form_grid, width=15)
     c_sp.grid(row=1, column=1, padx=5, pady=5)
@@ -657,7 +633,6 @@ Payment    : {pay_method}
     c_ma, min_alert_entry = create_styled_entry(form_grid, width=12)
     c_ma.grid(row=1, column=5, padx=5, pady=5)
 
-    # Row 2
     tk.Label(form_grid, text="Batch No:", **lbl_style).grid(row=2, column=0, sticky="e", padx=5, pady=5)
     c_ba, batch_entry = create_styled_entry(form_grid, width=15)
     c_ba.grid(row=2, column=1, padx=5, pady=5)
@@ -670,12 +645,10 @@ Payment    : {pay_method}
     warehouse_combo = ttk.Combobox(form_grid, values=["Central Warehouse", "Branch Warehouse"], width=11, font=("Helvetica", 10))
     warehouse_combo.grid(row=2, column=5, padx=5, pady=5)
 
-    # Row 3
     tk.Label(form_grid, text="Expiry (YYYY-MM):", **lbl_style).grid(row=3, column=0, sticky="e", padx=5, pady=5)
     c_ex, expiry_entry = create_styled_entry(form_grid, width=15)
     c_ex.grid(row=3, column=1, padx=5, pady=5)
 
-    # CSV IMPORT / EXPORT
     def export_inventory_csv():
         filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv")])
         if not filepath:
@@ -724,18 +697,12 @@ Payment    : {pay_method}
             conn.close()
             refresh_table()
 
-    # BACKUP / RESTORE DATABASE
     def backup_database():
         backup_path = filedialog.asksaveasfilename(defaultextension=".db", filetypes=[("SQLite DB", "*.db")])
         if backup_path:
             shutil.copyfile("general_inventory.db", backup_path)
             messagebox.showinfo("Backup Success", f"Database backed up to {backup_path}")
 
-    # ==========================================
-    # NEW ADVANCED MODULES & EXTENSIONS
-    # ==========================================
-
-    # 1. VISUAL CHARTS & DASHBOARD ANALYTICS
     def open_analytics_dashboard():
         if user_role == "Cashier":
             messagebox.showerror("Access Denied", "Cashier cannot view analytics!")
@@ -760,7 +727,6 @@ Payment    : {pay_method}
         """)
         est_profit = cursor.fetchone()[0] or 0.0
 
-        # Category sales count for charts
         cursor.execute("""
             SELECT i.category, SUM(s.quantity) 
             FROM sales s JOIN inventory i ON s.product_id = i.id 
@@ -776,7 +742,6 @@ Payment    : {pay_method}
 
         tk.Label(f_top, text=f"Total Orders: {tot_sales_count}  |  Total Revenue: ${tot_rev:.2f}  |  Est. Net Profit: ${est_profit:.2f}", bg="#ffffff", font=("Helvetica", 11, "bold"), fg="#198754").pack(pady=10)
 
-        # Plot Matplotlib Pie Chart if installed
         if HAS_MATPLOTLIB and cat_data:
             categories = [c[0] if c[0] else 'General' for c in cat_data]
             quantities = [c[1] for c in cat_data]
@@ -795,7 +760,6 @@ Payment    : {pay_method}
             for cd in cat_data:
                 tk.Label(f_text, text=f"• {cd[0] or 'General'}: {cd[1]} units sold", bg="#ffffff", font=("Helvetica", 10)).pack(anchor="w", padx=20, pady=2)
 
-    # 2. BARCODE & QR GENERATOR MODULE
     def open_barcode_generator():
         bc_win = tk.Toplevel(root)
         bc_win.title("Barcode & Label Generator")
@@ -823,7 +787,6 @@ Payment    : {pay_method}
         btn_gen = CanvasButton(bc_win, text="Generate Label", command=draw_barcode, bg_color="#0d6efd", fg_color="#ffffff", width=130, height=30)
         btn_gen.pack(pady=5)
 
-    # 3. SUPPLIER & PURCHASE ORDER MODULE
     def open_supplier_module():
         if user_role == "Cashier":
             messagebox.showerror("Access Denied", "Cashier cannot access Supplier Management!")
@@ -883,7 +846,6 @@ Payment    : {pay_method}
 
         load_suppliers()
 
-    # 4. SALES RETURN & REFUND SYSTEM
     def open_return_refund_module():
         ref_win = tk.Toplevel(root)
         ref_win.title("Sales Return & Refund Terminal")
@@ -923,7 +885,6 @@ Payment    : {pay_method}
                 conn.close()
                 return
 
-            # Refund logic: Add back stock
             cursor.execute("UPDATE inventory SET stock = stock + ? WHERE id = ?", (rqty, p_id))
             cursor.execute("INSERT INTO sales_returns (invoice_no, product_id, quantity, return_date) VALUES (?, ?, ?, ?)",
                            (inv, p_id, rqty, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
@@ -938,7 +899,6 @@ Payment    : {pay_method}
         btn_ref = CanvasButton(ref_win, text="Confirm Refund", command=process_return, bg_color="#dc3545", fg_color="#ffffff", width=130, height=30)
         btn_ref.pack(pady=12)
 
-    # 5. CUSTOMER LOYALTY DATABASE
     def open_customer_database():
         cust_win = tk.Toplevel(root)
         cust_win.title("Customer Loyalty & History Database")
@@ -1026,7 +986,6 @@ Payment    : {pay_method}
         btn_cust = CanvasButton(settings_win, text="👥 Customer Base", command=open_customer_database, bg_color="#6f42c1", fg_color="#ffffff", width=140, height=30)
         btn_cust.pack(pady=4)
 
-    # Canvas Buttons Grid
     btn_add = CanvasButton(btn_grid, text="➕ Add Product", command=add_product, bg_color="#198754", fg_color="#ffffff", width=110, height=30)
     btn_add.grid(row=0, column=0, padx=4, pady=3)
 
@@ -1057,7 +1016,6 @@ Payment    : {pay_method}
     btn_set = CanvasButton(btn_grid, text="⚙ Settings", command=open_settings_window, bg_color="#495057", fg_color="#ffffff", width=110, height=30)
     btn_set.grid(row=4, column=1, padx=4, pady=3)
 
-    # ----- SEARCH & TABLE SECTION -----
     search_frame = tk.Frame(root, bg="#f4f6f9")
     search_frame.pack(fill="x", padx=15, pady=5)
 
@@ -1091,7 +1049,6 @@ Payment    : {pay_method}
     btn_reset = CanvasButton(search_frame, text="🔄 Reset Table", command=refresh_table, bg_color="#6c757d", fg_color="#ffffff", width=100, height=28)
     btn_reset.pack(side="left", padx=5)
 
-    # Treeview Table
     table_frame = tk.Frame(root, bg="#ffffff")
     table_frame.pack(fill="both", expand=True, padx=15, pady=10)
 
@@ -1113,9 +1070,6 @@ Payment    : {pay_method}
     check_low_stock_alerts()
     root.mainloop()
 
-# ==========================================
-# LOGIN SCREEN & ENTRY POINT
-# ==========================================
 def login_screen():
     login_win = tk.Tk()
     login_win.title("POS System Login")
