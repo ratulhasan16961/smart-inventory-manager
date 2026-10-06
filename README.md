@@ -36,3 +36,20 @@ Ensure you have **Python 3** installed on your system:
 
 ```bash
 python3 --version
+
+## Quick start
+
+```bash
+python3 inventory_app.py        # or: python3 -m pos_erp
+```
+
+First login: `admin` / `1234` (or `cashier` / `1234`). You will be asked to choose a new password.
+Your database is created next to the code as `general_inventory.db`.
+
+## Tests
+
+```bash
+python3 -m unittest discover -s tests -t . -v
+```
+
+See `docs/ARCHITECTURE.md` for the design and `CHANGELOG.md` for what changed.
