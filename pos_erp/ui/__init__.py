@@ -1,0 +1,1 @@
+"""Tkinter user interface. All business rules live in pos_erp.services."""
