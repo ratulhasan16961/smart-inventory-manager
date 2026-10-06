@@ -72,9 +72,7 @@ def _backup_file(conn: sqlite3.Connection) -> str | None:
     return dest
 
 
-# ---------------------------------------------------------------------------
-# Legacy upgrade
-# ---------------------------------------------------------------------------
+
 def _col(row: sqlite3.Row, name: str, default=None):
     return row[name] if name in row.keys() and row[name] is not None else default
 
@@ -144,7 +142,7 @@ def _copy_products(conn):
              _col(r, "batch", ""), (_col(r, "barcode", "") or "").strip() or None,
              _col(r, "warehouse", ""), _col(r, "expiry", "")),
         )
-        if stock > 0:  # opening balance keeps "stock == sum(ledger)" true from day one
+        if stock > 0:  
             conn.execute("UPDATE products SET stock = ? WHERE id = ?", (stock, r["id"]))
             conn.execute(
                 """INSERT INTO stock_movements (product_id, qty_change, stock_after, reason, ref_type, ref_id,
@@ -179,7 +177,7 @@ def _copy_suppliers(conn):
 
 def _ensure_product(conn, product_id: int) -> sqlite3.Row:
     row = conn.execute("SELECT id, cost_cents FROM products WHERE id = ?", (product_id,)).fetchone()
-    if row is None:  # product was hard-deleted in the old app: keep history via an inactive placeholder
+    if row is None:  
         conn.execute("INSERT INTO products (id, name, is_active) VALUES (?, ?, 0)",
                      (product_id, f"Deleted product #{product_id}"))
         row = conn.execute("SELECT id, cost_cents FROM products WHERE id = ?", (product_id,)).fetchone()
@@ -213,7 +211,7 @@ def _copy_sales(conn):
         else:
             line_disc, line_tax = discs, taxes
 
-        merged: dict[int, list[int]] = {}  # product_id -> [qty, sub, disc, tax]
+        merged: dict[int, list[int]] = {} 
         for l, s, d, t in zip(lines, subs, line_disc, line_tax):
             acc = merged.setdefault(l["product_id"], [0, 0, 0, 0])
             acc[0] += max(int(_col(l, "quantity", 0) or 0), 0)

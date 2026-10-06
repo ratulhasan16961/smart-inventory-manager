@@ -14,7 +14,7 @@ from . import audit, stock_service
 OPEN_STATUSES = ("Ordered", "Partially Received")
 
 
-# --------------------------------------------------------------------------- suppliers
+
 def add_supplier(conn: sqlite3.Connection, session: Session, name: str, phone: str = "", email: str = "",
                  address: str = "") -> int:
     session.require("purchasing.manage")
@@ -43,7 +43,7 @@ def deactivate_supplier(conn: sqlite3.Connection, session: Session, supplier_id:
         audit.log(conn, session.username, f"Deactivated supplier: {row['name']}")
 
 
-# --------------------------------------------------------------------------- purchase orders
+
 @dataclass(frozen=True)
 class POLine:
     product_id: int
