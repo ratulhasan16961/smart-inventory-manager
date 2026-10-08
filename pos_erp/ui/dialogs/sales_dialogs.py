@@ -6,7 +6,7 @@ from tkinter import messagebox
 
 from ... import config
 from ...money import fmt
-from ...services import returns_service
+from ...services import returns_service, settings_service
 from ...services.receipt import render_receipt
 from ...services.sales_service import Invoice
 from ..context import AppContext
@@ -15,7 +15,8 @@ from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styl
 
 
 def show_receipt(ctx: AppContext, invoice: Invoice) -> None:
-    text = render_receipt(invoice)
+    shop = settings_service.get_all(ctx.conn)
+    text = render_receipt(invoice, shop["shop_name"], shop["receipt_footer"])
     win = tk.Toplevel(ctx.root)
     win.title("Sales Invoice & Receipt")
     win.geometry("420x600")

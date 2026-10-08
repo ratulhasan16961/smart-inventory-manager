@@ -4,7 +4,9 @@ from __future__ import annotations
 import sqlite3
 import unittest
 
+from pos_erp import config
 from pos_erp.db import connect, ensure_schema
+from pos_erp.db.upgrades import apply_upgrades
 from pos_erp.permissions import Session
 from pos_erp.services import inventory_service as inv
 from pos_erp.services.inventory_service import ProductForm
@@ -16,6 +18,7 @@ CASHIER = Session(2, "cashier", "Cashier")
 def make_conn() -> sqlite3.Connection:
     conn = connect(":memory:")
     ensure_schema(conn)
+    apply_upgrades(conn)
     return conn
 
 
@@ -27,6 +30,12 @@ def add_product(conn, name="Widget", price="10.00", cost="6.00", stock=10, min_a
 class DbTestCase(unittest.TestCase):
     def setUp(self):
         self.conn = make_conn()
+        # settings/lists publish values into config at runtime; put them back after each test
+        self.addCleanup(self._restore_config, (config.CATEGORIES, config.WAREHOUSES, config.CURRENCY_SYMBOL))
+
+    @staticmethod
+    def _restore_config(saved):
+        config.CATEGORIES, config.WAREHOUSES, config.CURRENCY_SYMBOL = saved
 
     def tearDown(self):
         self.conn.close()

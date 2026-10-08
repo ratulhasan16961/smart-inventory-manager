@@ -57,6 +57,9 @@ erDiagram
 6. **Permissions live in services.** Hiding a button is only a convenience; `session.require(...)` is the rule.
 7. **Migrations.** `PRAGMA user_version` tracks the schema. The legacy upgrade backs up the file first and runs
    in a single transaction; IDs are preserved.
+8. **Upgrades after the base schema.** The base schema is `PRAGMA user_version = 1`. Later changes are numbered
+   functions in `db/upgrades.py`, recorded in `schema_migrations`; a file backup is taken before they run.
+9. **No default accounts.** A brand-new database asks for the administrator account at first start.
 
 ## Permissions
 

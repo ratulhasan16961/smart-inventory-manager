@@ -4,14 +4,20 @@ from __future__ import annotations
 from ..money import fmt
 from .sales_service import Invoice
 
+DEFAULT_SHOP_NAME = "Enterprise POS"
+DEFAULT_FOOTER = "Thank you for shopping with us!"
+WIDTH = 41
 
-def render_receipt(invoice: Invoice) -> str:
+
+def render_receipt(invoice: Invoice, shop_name: str = DEFAULT_SHOP_NAME, footer: str = DEFAULT_FOOTER) -> str:
     rows = "".join(f"{i.product_name[:18]:<18} x{i.quantity:<3} {fmt(i.line_subtotal_cents)}\n" for i in invoice.items)
-    rule = "-" * 41
-    heavy = "=" * 41
+    rule = "-" * WIDTH
+    heavy = "=" * WIDTH
+    title = f"{shop_name.strip().upper()} RECEIPT".center(WIDTH).rstrip()
+    closing = footer.strip().center(WIDTH).rstrip()
     return f"""
 {heavy}
-          ENTERPRISE POS RECEIPT
+{title}
 {heavy}
 Invoice No : {invoice.invoice_no}
 Date       : {invoice.created_at}
@@ -30,6 +36,6 @@ Tax ({invoice.tax_rate:f}%): +{fmt(invoice.tax_cents)}
 TOTAL PAID : {fmt(invoice.total_cents)}
 Payment    : {invoice.payment_method}
 {heavy}
-        Thank you for shopping with us!
+{closing}
 {heavy}
 """

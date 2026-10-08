@@ -10,6 +10,7 @@ from ...services import audit, auth_service, backup_service, inventory_service, 
 from ..context import AppContext
 from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, fill_tree,
                        handle_errors, make_tree)
+from .system_dialogs import open_backup_restore, open_manage_lists, open_shop_settings, open_user_management
 
 try:
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -79,7 +80,7 @@ def open_customers(ctx: AppContext) -> None:
 def open_settings(ctx: AppContext) -> None:
     win = tk.Toplevel(ctx.root)
     win.title("Settings & Maintenance")
-    win.geometry("380x400")
+    win.geometry("380x680")
     win.config(bg=WHITE)
     tk.Label(win, text="Update Security Settings", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack(pady=8)
     tk.Label(win, text="Username:", **LABEL_STYLE).pack()
@@ -105,12 +106,23 @@ def open_settings(ctx: AppContext) -> None:
 
     CanvasButton(win, "Save Credentials", save_credentials, "#198754", width=140, height=30).pack(pady=8)
     tk.Frame(win, height=1, bg="#cccccc").pack(fill="x", padx=15, pady=5)
-    backup_button = CanvasButton(win, "💾 Backup Database", backup, "#0d6efd", width=140, height=30)
+    backup_button = CanvasButton(win, "💾 Backup Database", backup, "#0d6efd", width=190, height=30)
     backup_button.pack(pady=4)
     backup_button.set_enabled(ctx.can("system.backup"))
-    customers_button = CanvasButton(win, "👥 Customer Base", lambda: open_customers(ctx), "#6f42c1", width=140, height=30)
+    customers_button = CanvasButton(win, "👥 Customer Base", lambda: open_customers(ctx), "#6f42c1", width=190, height=30)
     customers_button.pack(pady=4)
     customers_button.set_enabled(ctx.can("customers.view"))
+
+    tk.Frame(win, height=1, bg="#cccccc").pack(fill="x", padx=15, pady=8)
+    tk.Label(win, text="Administration", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack()
+    for text, handler, color, permission in (
+            ("🛠 Shop Settings", open_shop_settings, "#0d6efd", "settings.manage"),
+            ("👤 Manage Users", open_user_management, "#6610f2", "users.manage"),
+            ("💽 Backup & Restore", open_backup_restore, "#fd7e14", "system.restore"),
+            ("🗂 Categories & Warehouses", open_manage_lists, "#20c997", "lists.manage")):
+        button = CanvasButton(win, text, lambda h=handler: h(ctx), color, width=190, height=30)
+        button.pack(pady=4)
+        button.set_enabled(ctx.can(permission))
 
 
 @handle_errors

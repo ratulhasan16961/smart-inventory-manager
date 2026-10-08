@@ -7,7 +7,7 @@ from tkinter import messagebox, ttk
 from .. import config
 from ..errors import POSError
 from ..money import fmt
-from ..services import inventory_service, sales_service
+from ..services import inventory_service, sales_service, settings_service
 from .context import AppContext
 from .dialogs.sales_dialogs import show_receipt
 from .widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, handle_errors,
@@ -37,10 +37,10 @@ class PosTab:
         self.prod_qty_e = field("Qty:", 0, 2, 5)
         CanvasButton(frame, "🛒 Add Cart", self.add_to_cart, "#6f42c1", width=90, height=28).grid(
             row=0, column=4, padx=6, pady=6)
-        self.disc_e = field("Discount ($):", 0, 5, 7)
+        self.disc_e = field(f"Discount ({config.CURRENCY_SYMBOL}):", 0, 5, 7)
         self.tax_e = field("Tax (%):", 0, 7, 6)
-        for entry in (self.disc_e, self.tax_e):
-            entry.insert(0, "0")
+        self.disc_e.insert(0, "0")
+        self.tax_e.insert(0, settings_service.get(self.ctx.conn, "default_tax_rate"))
         tk.Label(frame, text="Payment:", **LABEL_STYLE).grid(row=0, column=9, padx=4, pady=6, sticky="e")
         self.pay_combo = ttk.Combobox(frame, values=list(config.PAYMENT_METHODS), width=14, font=(FONT, 9),
                                       state="readonly")

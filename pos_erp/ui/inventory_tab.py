@@ -52,7 +52,8 @@ class InventoryTab:
                 container.grid(row=row, column=col + 1, padx=5, pady=5)
             else:
                 values = config.CATEGORIES if label == "Category" else config.WAREHOUSES
-                widget = ttk.Combobox(form, values=list(values), width=width, font=(FONT, 10))
+                widget = ttk.Combobox(form, values=list(values), width=max(width, 18), font=(FONT, 10),
+                                      state="readonly")
                 widget.grid(row=row, column=col + 1, padx=5, pady=5)
             self.fields[label] = widget
         self.clear_form()

@@ -1,11 +1,12 @@
-"""Login screen, including the forced password change for temporary passwords."""
+"""Login screen: first-run administrator setup, normal login, and the forced password change."""
 from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox
 
+from .. import config
 from ..errors import AuthenticationError, POSError
-from ..services import auth_service
+from ..services import auth_service, user_service
 from .widgets import BG, DARK, FONT, CanvasButton, create_styled_entry
 
 
@@ -16,7 +17,10 @@ class LoginView:
         self.on_success = on_success
         self.frame = tk.Frame(root, bg=BG)
         self.frame.pack(fill="both", expand=True)
-        self._show_login()
+        if user_service.needs_setup(conn):
+            self._show_setup()
+        else:
+            self._show_login()
 
     def _reset(self, title: str) -> None:
         for child in self.frame.winfo_children():
@@ -29,6 +33,31 @@ class LoginView:
         container.pack(pady=5)
         return entry
 
+    # ------------------------------------------------------------------ first run
+    def _show_setup(self) -> None:
+        self._reset("Welcome! Create the admin account")
+        tk.Label(self.frame, text="This is the first run.\nChoose the administrator username and password.",
+                 bg=BG, fg=DARK, font=(FONT, 9)).pack()
+        self.user_entry = self._entry("Username:")
+        self.user_entry.insert(0, "admin")
+        self.pass_entry = self._entry(f"Password (min {config.MIN_PASSWORD_LENGTH} characters):", show="*")
+        self.confirm_entry = self._entry("Confirm password:", show="*")
+        self.confirm_entry.bind("<Return>", self.create_admin)
+        CanvasButton(self.frame, "Create account", self.create_admin, width=150, height=32).pack(pady=20)
+        self.pass_entry.focus_set()
+
+    def create_admin(self, _event=None) -> None:
+        if self.pass_entry.get() != self.confirm_entry.get():
+            messagebox.showerror("Error", "The two passwords do not match!")
+            return
+        try:
+            session = user_service.create_first_admin(self.conn, self.user_entry.get(), self.pass_entry.get())
+        except POSError as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+        self._finish(session)
+
+    # ------------------------------------------------------------------ normal login
     def _show_login(self) -> None:
         self._reset("Enterprise POS System")
         self.user_entry = self._entry("Username:")

@@ -4,8 +4,9 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
+from .. import config
 from ..money import fmt
-from ..services import reporting_service
+from ..services import lists_service, reporting_service
 from .context import AppContext
 from .inventory_tab import InventoryTab
 from .pos_tab import PosTab
@@ -54,4 +55,12 @@ class MainWindow:
         }
         for key, text in texts.items():
             self.cards[key].config(text=text)
+        self._sync_lists()
         self.inventory.refresh_table()
+
+    def _sync_lists(self) -> None:
+        """Keep the Category / Warehouse dropdowns in step with the managed lists."""
+        lists_service.apply(self.ctx.conn)
+        fields = self.inventory.fields
+        fields["Category"].configure(values=list(config.CATEGORIES))
+        fields["Warehouse"].configure(values=list(config.WAREHOUSES))

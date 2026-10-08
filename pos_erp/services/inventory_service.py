@@ -86,6 +86,8 @@ def parse_form(form: ProductForm) -> dict:
     if min(cost, price, stock, min_alert) < 0:
         raise ValidationError("Prices, stock and minimum alert cannot be negative!")
     expiry = form.expiry.strip()
+    if expiry and valid_expiry(expiry):
+     expiry = datetime.strptime(expiry, "%Y-%m").strftime("%Y-%m")  # '2027-5' -> '2027-05'
     if not valid_expiry(expiry):
         raise ValidationError("Expiry must be in YYYY-MM format (e.g. 2027-03)!")
     return {
