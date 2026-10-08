@@ -11,20 +11,20 @@ from . import config
 from .errors import PermissionDenied
 
 ALL_PERMISSIONS = frozenset({
-    "sales.create",        
-    "returns.process",     
-    "inventory.view",      
-    "inventory.manage",    
-    "inventory.import",    
-    "inventory.export",    
-    "stock.view",          
-    "stock.adjust",        
-    "purchasing.manage",   
+    "sales.create",
+    "returns.process",
+    "inventory.view",
+    "inventory.manage",
+    "inventory.import",
+    "inventory.export",
+    "stock.view",
+    "stock.adjust",
+    "purchasing.manage",
     "analytics.view",
     "audit.view",
     "customers.view",
     "system.backup",
-    "account.update",      
+    "account.update",
     "barcode.generate",
     "users.manage",        # create / disable users, reset passwords, change roles
     "settings.manage",     # shop name, currency, default tax, receipt footer

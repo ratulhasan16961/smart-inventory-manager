@@ -35,7 +35,7 @@ class InventoryTab:
         self._build_search(parent)
         self._build_table(parent)
 
-  
+
     def _build_form(self, parent) -> None:
         frame = tk.LabelFrame(parent, text=" Product Entry Form ", bg=WHITE, fg="#212529",
                               font=(FONT, 10, "bold"), bd=1, relief="solid")
@@ -145,7 +145,7 @@ class InventoryTab:
                            batch=get("Batch No"), barcode=get("Barcode"), warehouse=get("Warehouse"),
                            expiry=get("Expiry (YYYY-MM)"))
 
-  
+
     @handle_errors
     def add_product(self) -> None:
         inventory_service.add_product(self.ctx.conn, self.ctx.session, self._read_form())

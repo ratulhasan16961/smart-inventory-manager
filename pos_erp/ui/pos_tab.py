@@ -17,7 +17,7 @@ from .widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_style
 class PosTab:
     def __init__(self, parent: tk.Frame, ctx: AppContext) -> None:
         self.ctx = ctx
-        self.cart: list[dict] = []  
+        self.cart: list[dict] = []
         self._build_billing(parent)
         self._build_cart(parent)
         self.render_cart()

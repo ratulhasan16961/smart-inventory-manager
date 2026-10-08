@@ -25,7 +25,7 @@ MAX_FAILED_LOGINS = 5
 LOCKOUT_MINUTES = 5
 
 EXPIRY_WARNING_DAYS = 30
-LOYALTY_CENTS_PER_POINT = 10_000  
+LOYALTY_CENTS_PER_POINT = 10_000
 
 PAYMENT_METHODS = ("Cash", "Card", "bKash / Mobile", "AliPay / WeChat")
 CATEGORIES = ("Electronics", "Grocery", "Clothing", "General")

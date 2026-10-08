@@ -102,7 +102,7 @@ def open_purchase_orders(ctx: AppContext) -> None:
 
     orders.bind("<<TreeviewSelect>>", show_lines)
 
- 
+
     @handle_errors
     def new_order() -> None:
         suppliers = purchase_service.list_suppliers(ctx.conn, ctx.session)
@@ -198,7 +198,7 @@ def open_purchase_orders(ctx: AppContext) -> None:
         CanvasButton(actions, "Create Order", create, "#198754", width=130, height=30).pack(side="left", padx=5)
         render()
 
-  
+
     @handle_errors
     def receive() -> None:
         po_id = selected_po()

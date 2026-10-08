@@ -44,7 +44,7 @@ def authenticate(conn: sqlite3.Connection, username: str, password: str, now: da
         if row is None or not row["is_active"]:
             if _dummy_hash is None:
                 _dummy_hash = hash_password("dummy-password")
-            verify_password(password, _dummy_hash)  
+            verify_password(password, _dummy_hash)
             audit.log(conn, username or "?", "Failed login (unknown or disabled user)")
             error = AuthenticationError("Invalid username or password.")
         elif row["locked_until"] and now < timeutil.parse(row["locked_until"]):
@@ -68,7 +68,7 @@ def authenticate(conn: sqlite3.Connection, username: str, password: str, now: da
                          (new_hash, row["id"]))
             audit.log(conn, row["username"], "User logged in")
             session = Session(row["id"], row["username"], row["role"], bool(row["must_change_password"]))
-    if error:  
+    if error:
         raise error
     assert session is not None
     return session

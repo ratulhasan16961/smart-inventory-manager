@@ -131,7 +131,7 @@ def _touch_customer(conn: sqlite3.Connection, name: str, phone: str, total_cents
     if row is None:
         return conn.execute("INSERT INTO customers (name, phone, loyalty_points, total_spent_cents) VALUES (?,?,?,?)",
                             (name, phone, points, total_cents)).lastrowid
-    
+
     conn.execute("UPDATE customers SET loyalty_points = loyalty_points + ?, total_spent_cents = total_spent_cents + ? "
                  "WHERE id = ?", (points, total_cents, row["id"]))
     return row["id"]
