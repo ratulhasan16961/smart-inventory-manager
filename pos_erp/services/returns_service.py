@@ -11,6 +11,8 @@ from ..money import fmt
 from ..permissions import Session
 from . import audit, stock_service
 
+VOIDED = "This invoice was voided, so nothing can be returned from it."
+
 
 @dataclass(frozen=True)
 class ReturnResult:
@@ -22,14 +24,16 @@ class ReturnResult:
 def invoice_lines(conn: sqlite3.Connection, session: Session, invoice_no: str) -> list[sqlite3.Row]:
     """Lines of an invoice with sold / already returned / still returnable quantities."""
     session.require("returns.process")
-    rows = conn.execute(
+    invoice = conn.execute("SELECT status FROM invoices WHERE invoice_no = ?", (invoice_no.strip(),)).fetchone()
+    if invoice is None:
+        raise NotFoundError("Invoice not found!")
+    if invoice["status"] == "Voided":
+        raise ValidationError(VOIDED)
+    return conn.execute(
         """SELECT ii.product_id, ii.product_name, ii.quantity AS sold,
                   COALESCE((SELECT SUM(r.quantity) FROM sales_returns r WHERE r.invoice_item_id = ii.id), 0) AS returned
            FROM invoice_items ii JOIN invoices i ON i.id = ii.invoice_id
            WHERE i.invoice_no = ? ORDER BY ii.id""", (invoice_no.strip(),)).fetchall()
-    if not rows:
-        raise NotFoundError("Invoice not found!")
-    return rows
 
 
 def process_return(conn: sqlite3.Connection, session: Session, invoice_no: str, product_id: int, quantity: int,
@@ -45,11 +49,13 @@ def process_return(conn: sqlite3.Connection, session: Session, invoice_no: str, 
 
     with transaction(conn):
         item = conn.execute(
-            """SELECT ii.id, ii.quantity, ii.line_total_cents, i.customer_phone
+            """SELECT ii.id, ii.quantity, ii.line_total_cents, i.customer_phone, i.status
                FROM invoice_items ii JOIN invoices i ON i.id = ii.invoice_id
                WHERE i.invoice_no = ? AND ii.product_id = ?""", (invoice_no.strip(), product_id)).fetchone()
         if item is None:
             raise NotFoundError("Matching sale record not found!")
+        if item["status"] == "Voided":
+            raise ValidationError(VOIDED)
         done = conn.execute("SELECT COALESCE(SUM(quantity),0) AS qty, COALESCE(SUM(refund_cents),0) AS cents "
                             "FROM sales_returns WHERE invoice_item_id = ?", (item["id"],)).fetchone()
         remaining = item["quantity"] - done["qty"]

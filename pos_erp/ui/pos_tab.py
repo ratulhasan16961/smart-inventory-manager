@@ -1,4 +1,4 @@
-"""POS Billing tab: customer fields, live cart table and checkout."""
+"""POS Billing tab: customer fields, live cart table, cash received / change due, checkout."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -6,22 +6,26 @@ from tkinter import messagebox, ttk
 
 from .. import config
 from ..errors import POSError
-from ..money import fmt
-from ..services import inventory_service, sales_service, settings_service
+from ..money import fmt, to_cents
+from ..services import inventory_service, sales_service, settings_service, till_service
 from .context import AppContext
-from .dialogs.sales_dialogs import show_receipt
+from .dialogs.sales_dialogs import open_invoices, show_receipt
 from .widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, handle_errors,
                       make_tree)
+
+MUTED = "#6c757d"
 
 
 class PosTab:
     def __init__(self, parent: tk.Frame, ctx: AppContext) -> None:
         self.ctx = ctx
-        self.cart: list[dict] = []
+        self.cart: list[dict] = []  # display only; prices are re-read from the DB at checkout
+        self._total_cents: int | None = None
         self._build_billing(parent)
         self._build_cart(parent)
         self.render_cart()
 
+    # ------------------------------------------------------------------ layout
     def _build_billing(self, parent) -> None:
         frame = tk.LabelFrame(parent, text=" Customer Billing & POS Multi-Item Cart ", bg=WHITE, fg="#0d6efd",
                               font=(FONT, 10, "bold"), bd=1, relief="solid")
@@ -48,11 +52,16 @@ class PosTab:
         self.pay_combo.set(config.PAYMENT_METHODS[0])
         self.cust_name_e = field("Customer Name:", 1, 0, 14)
         self.cust_phone_e = field("Phone:", 1, 2, 14, columnspan=2, sticky="w")
+        self.received_e = field(f"Received ({config.CURRENCY_SYMBOL}):", 1, 5, 9)
+        self.lbl_change = tk.Label(frame, text="", bg=WHITE, fg=MUTED, font=(FONT, 10, "bold"))
+        self.lbl_change.grid(row=1, column=7, columnspan=4, padx=6, sticky="w")
 
         self.prod_id_e.bind("<Return>", self.add_to_cart)
         self.prod_qty_e.bind("<Return>", self.add_to_cart)
         self.disc_e.bind("<KeyRelease>", self.update_summary)
         self.tax_e.bind("<KeyRelease>", self.update_summary)
+        self.received_e.bind("<KeyRelease>", lambda _e: self._update_change())
+        self.pay_combo.bind("<<ComboboxSelected>>", lambda _e: self._on_payment_change())
 
     def _build_cart(self, parent) -> None:
         self.cart_frame = tk.LabelFrame(parent, text=" Current Cart (0 items) ", bg=WHITE, fg=DARK,
@@ -73,6 +82,10 @@ class PosTab:
             side="right", padx=5)
         CanvasButton(bottom, "Remove Selected", self.remove_selected, "#dc3545", width=130, height=34).pack(
             side="right", padx=5)
+        invoices_button = CanvasButton(bottom, "🧾 Recent Invoices", lambda: open_invoices(self.ctx), "#0d6efd",
+                                       width=150, height=34)
+        invoices_button.pack(side="right", padx=5)
+        invoices_button.set_enabled(self.ctx.can("invoices.view"))
 
     # ------------------------------------------------------------------ cart
     def focus_barcode(self) -> None:
@@ -92,21 +105,58 @@ class PosTab:
         self.update_summary()
 
     def update_summary(self, _event=None) -> None:
+        self._total_cents = None
         if not self.cart:
             zero = fmt(0)
             self.lbl_summary.config(
                 text=f"Subtotal: {zero}    Discount: -{zero}    Tax: +{zero}    TOTAL: {zero}", fg=DARK)
+            self._update_change()
             return
         try:
             quote = sales_service.quote(self.ctx.conn, self._items(), self.disc_e.get(), self.tax_e.get())
         except POSError:
             self.lbl_summary.config(text="Check the discount / tax values", fg="#dc3545")
+            self._update_change()
             return
+        self._total_cents = quote.total_cents
         self.lbl_summary.config(
             text=(f"Subtotal: {fmt(quote.subtotal_cents)}    Discount: -{fmt(quote.discount_cents)}    "
                   f"Tax ({quote.tax_rate:f}%): +{fmt(quote.tax_cents)}    TOTAL: {fmt(quote.total_cents)}"),
             fg=DARK)
+        self._update_change()
 
+    # ------------------------------------------------------------------ cash
+    def _cash(self) -> bool:
+        return self.pay_combo.get() == till_service.cash_method()
+
+    def _on_payment_change(self) -> None:
+        cash = self._cash()
+        self.received_e.config(state="normal")
+        if not cash:
+            self.received_e.delete(0, tk.END)
+        self.received_e.config(state="normal" if cash else "disabled")
+        self._update_change()
+
+    def _update_change(self) -> None:
+        if not self._cash():
+            self.lbl_change.config(text="Change: not needed (not cash)", fg=MUTED)
+            return
+        text = self.received_e.get().strip()
+        if not text or self._total_cents is None:
+            self.lbl_change.config(text="Change: enter the amount received", fg=MUTED)
+            return
+        try:
+            received = to_cents(text)
+        except ValueError:
+            self.lbl_change.config(text="Amount received is not a number", fg="#dc3545")
+            return
+        difference = received - self._total_cents
+        if difference >= 0:
+            self.lbl_change.config(text=f"Change due: {fmt(difference)}", fg="#198754")
+        else:
+            self.lbl_change.config(text=f"Short by {fmt(-difference)}", fg="#dc3545")
+
+    # ------------------------------------------------------------------ cart actions
     @handle_errors
     def add_to_cart(self, _event=None) -> None:
         key = self.prod_id_e.get().strip()
@@ -157,14 +207,17 @@ class PosTab:
         if not self.cart:
             messagebox.showwarning("Warning", "Cart is empty! Add products to cart first.")
             return
-        invoice = sales_service.checkout(
+        invoice = till_service.checkout_with_payment(
             self.ctx.conn, self.ctx.session, self._items(), self.disc_e.get(), self.tax_e.get(),
-            self.pay_combo.get(), self.cust_name_e.get(), self.cust_phone_e.get())
+            self.pay_combo.get(), self.cust_name_e.get(), self.cust_phone_e.get(),
+            tendered=self.received_e.get() if self._cash() else None)
         self.cart.clear()
         for entry in (self.cust_name_e, self.cust_phone_e):
             entry.delete(0, tk.END)
         self.disc_e.delete(0, tk.END)
         self.disc_e.insert(0, "0")
+        if self._cash():
+            self.received_e.delete(0, tk.END)
         self.render_cart()
         self.ctx.refresh()
         show_receipt(self.ctx, invoice)

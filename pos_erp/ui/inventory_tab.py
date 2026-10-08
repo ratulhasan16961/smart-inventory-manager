@@ -10,6 +10,7 @@ from ..services import inventory_service
 from ..services.inventory_service import ProductForm
 from .context import AppContext
 from .dialogs.admin_dialogs import open_analytics, open_audit_logs, open_settings, open_stock_ledger
+from .dialogs.report_dialogs import open_reports
 from .dialogs.inventory_dialogs import open_barcode_generator, open_edit_product
 from .dialogs.purchasing_dialogs import open_purchase_orders, open_suppliers
 from .dialogs.sales_dialogs import open_returns
@@ -71,6 +72,7 @@ class InventoryTab:
             ("📦 Purchase Orders", lambda: open_purchase_orders(ctx), "#6610f2", "purchasing.manage", "#ffffff"),
             ("🔄 Return / Refund", lambda: open_returns(ctx), "#d63384", "returns.process", "#ffffff"),
             ("📒 Stock Ledger", lambda: open_stock_ledger(ctx), "#0b5ed7", "stock.view", "#ffffff"),
+            ("📈 Reports", lambda: open_reports(ctx), "#6f42c1", "reports.view", "#ffffff"),
             ("⚙ Settings", lambda: open_settings(ctx), "#495057", "account.update", "#ffffff"),
         )
         for index, (text, handler, color, permission, text_color) in enumerate(specs):

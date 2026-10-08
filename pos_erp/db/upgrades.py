@@ -39,7 +39,20 @@ def _upgrade_v2(conn: sqlite3.Connection) -> None:
                  "WHERE expiry GLOB '[0-9][0-9][0-9][0-9]-[0-9]'")
 
 
-UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {2: _upgrade_v2}
+def _upgrade_v3(conn: sqlite3.Connection) -> None:
+    """Cash handling (amount received / change due) and voided invoices."""
+    conn.execute("ALTER TABLE invoices ADD COLUMN tendered_cents INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE invoices ADD COLUMN change_cents INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE invoices ADD COLUMN status TEXT NOT NULL DEFAULT 'Completed' "
+                 "CHECK (status IN ('Completed', 'Voided'))")
+    conn.execute("ALTER TABLE invoices ADD COLUMN voided_at TEXT")
+    conn.execute("ALTER TABLE invoices ADD COLUMN voided_by TEXT")
+    conn.execute("ALTER TABLE invoices ADD COLUMN void_reason TEXT NOT NULL DEFAULT ''")
+    conn.execute("UPDATE invoices SET tendered_cents = total_cents")  # older invoices: assume exact payment
+    conn.execute("CREATE INDEX idx_invoices_status ON invoices (status)")
+
+
+UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {2: _upgrade_v2, 3: _upgrade_v3}
 LATEST_VERSION = max(UPGRADES)
 
 

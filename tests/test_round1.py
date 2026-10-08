@@ -21,7 +21,7 @@ class UpgradeTests(unittest.TestCase):
         conn = connect(":memory:")
         ensure_schema(conn)
         self.assertEqual(applied_version(conn), 1)
-        self.assertEqual(apply_upgrades(conn), [2])
+        self.assertEqual(apply_upgrades(conn), [2, 3])
         self.assertEqual(applied_version(conn), LATEST_VERSION)
         self.assertEqual(apply_upgrades(conn), [])
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}

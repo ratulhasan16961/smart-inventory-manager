@@ -48,18 +48,22 @@ erDiagram
 
 1. **Integer cents.** Floats drift (0.1 + 0.2). All money columns are `*_cents INTEGER`.
 2. **Invoices keep snapshots.** `invoice_items` store product name, unit price and unit cost at the time of sale,
-   so editing or deleting a product never rewrites history, and profit uses the real cost.
+so editing or deleting a product never rewrites history, and profit uses the real cost.
 3. **One door for stock.** `stock_service.apply_stock_change` is the only code that modifies `products.stock`
-   and it always writes a ledger row. The DB also rejects negative stock (`CHECK stock >= 0`).
+and it always writes a ledger row. The DB also rejects negative stock (`CHECK stock >= 0`).
 4. **Atomic operations.** Checkout, returns, receiving and imports run in one transaction (nested calls use
-   savepoints). A failure leaves no half-finished data.
+savepoints). A failure leaves no half-finished data.
 5. **Soft delete.** Products and suppliers are deactivated, not removed, so foreign keys stay valid.
 6. **Permissions live in services.** Hiding a button is only a convenience; `session.require(...)` is the rule.
 7. **Migrations.** `PRAGMA user_version` tracks the schema. The legacy upgrade backs up the file first and runs
-   in a single transaction; IDs are preserved.
+in a single transaction; IDs are preserved.
 8. **Upgrades after the base schema.** The base schema is `PRAGMA user_version = 1`. Later changes are numbered
-   functions in `db/upgrades.py`, recorded in `schema_migrations`; a file backup is taken before they run.
+functions in `db/upgrades.py`, recorded in `schema_migrations`; a file backup is taken before they run.
 9. **No default accounts.** A brand-new database asks for the administrator account at first start.
+10. **Voids reuse the ledger.** Voiding an invoice returns stock with reason `RETURN` and a `VOID ...` note, so the
+`stock_movements` CHECK constraint stays unchanged. The invoice keeps its history (`status = 'Voided'`).
+11. **Cash tendering wraps checkout.** `till_service.checkout_with_payment` runs `sales_service.checkout` and the
+payment update in one transaction (nested savepoint), so an insufficient payment rolls the whole sale back.
 
 ## Permissions
 

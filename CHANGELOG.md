@@ -17,6 +17,23 @@
 - The Warehouse dropdown is wider.
 # Changelog
 
+## 2.2.0
+
+### Added
+- Cash handling at the till: "Received" field with live "Change due". Too little cash blocks the sale (and rolls it
+  back). Leaving it blank means exact payment. Receipts show Received and Change.
+- Void invoice (Admin, reason required): stock returns through the ledger (reason RETURN, note "VOID ..."),
+  customer totals and loyalty points are reversed, reports ignore the invoice. Not possible once any item was returned.
+- Invoices window (also on the POS tab): search, view / reprint receipts, void.
+- Reports window (Admin): date-range sales report (daily, top products, payment methods, categories, refunds,
+  discounts, tax, profit, voided invoices) plus Low Stock, Expiry and Stock Value reports, all exportable to CSV.
+- Print button on receipts (macOS/Linux `lp`, Windows default printer).
+- Database upgrade v3: payment and void columns on invoices.
+
+### Changed
+- Returns are refused on voided invoices.
+- Cashiers can open the Invoices window; only Admins can void and open Reports.
+
 ## 2.0.0
 
 ### Added
