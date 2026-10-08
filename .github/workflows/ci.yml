@@ -20,8 +20,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
-    # Not blocking until the first clean run; then remove the next line to enforce it.
-    continue-on-error: true
+    
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
