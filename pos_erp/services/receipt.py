@@ -12,13 +12,15 @@ WIDTH = 41
 
 def render_receipt(invoice: Invoice, shop_name: str = DEFAULT_SHOP_NAME, footer: str = DEFAULT_FOOTER,
                    tendered_cents: int | None = None, change_cents: int | None = None,
-                   voided: bool = False) -> str:
+                   voided: bool = False, points_redeemed: int = 0, points_value_cents: int = 0) -> str:
     rows = "".join(f"{i.product_name[:18]:<18} x{i.quantity:<3} {fmt(i.line_subtotal_cents)}\n" for i in invoice.items)
     rule = "-" * WIDTH
     heavy = "=" * WIDTH
     title = f"{shop_name.strip().upper()} RECEIPT".center(WIDTH).rstrip()
     closing = footer.strip().center(WIDTH).rstrip()
     banner = "*** VOIDED ***".center(WIDTH).rstrip() + "\n" if voided else ""
+    points_line = (f"  (incl. {points_redeemed} loyalty point(s): -{fmt(points_value_cents)})\n"
+                   if points_redeemed else "")
     payment = f"Payment    : {invoice.payment_method}\n"
     if tendered_cents is not None and invoice.payment_method == config.PAYMENT_METHODS[0]:
         payment += f"Received   : {fmt(tendered_cents)}\nChange     : {fmt(change_cents or 0)}\n"
@@ -38,7 +40,7 @@ ITEM                 QTY  PRICE
 {rows}{rule}
 Subtotal   : {fmt(invoice.subtotal_cents)}
 Discount   : -{fmt(invoice.discount_cents)}
-Tax ({invoice.tax_rate:f}%): +{fmt(invoice.tax_cents)}
+{points_line}Tax ({invoice.tax_rate:f}%): +{fmt(invoice.tax_cents)}
 {rule}
 TOTAL PAID : {fmt(invoice.total_cents)}
 {payment}{heavy}

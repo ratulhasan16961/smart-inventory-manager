@@ -17,9 +17,10 @@ from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styl
 def show_receipt(ctx: AppContext, invoice: Invoice, meta=None) -> None:
     meta = meta if meta is not None else till_service.invoice_meta(ctx.conn, invoice.invoice_no)
     shop = settings_service.get_all(ctx.conn)
-    text = render_receipt(invoice, shop["shop_name"], shop["receipt_footer"],
+    text =     text = render_receipt(invoice, shop["shop_name"], shop["receipt_footer"],
                           tendered_cents=meta["tendered_cents"], change_cents=meta["change_cents"],
-                          voided=meta["status"] == "Voided")
+                          voided=meta["status"] == "Voided", points_redeemed=meta["points_redeemed"],
+                          points_value_cents=meta["points_value_cents"])
     win = tk.Toplevel(ctx.root)
     win.title("Sales Invoice & Receipt")
     win.geometry("420x680")

@@ -1,4 +1,4 @@
-"""Inventory tab: product form, role-aware action buttons, search and the highlighted product table."""
+"""Inventory tab: product form, role-aware action buttons, search / filter / sort and the highlighted table."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -10,9 +10,9 @@ from ..services import inventory_service
 from ..services.inventory_service import ProductForm
 from .context import AppContext
 from .dialogs.admin_dialogs import open_analytics, open_audit_logs, open_settings, open_stock_ledger
-from .dialogs.report_dialogs import open_reports
 from .dialogs.inventory_dialogs import open_barcode_generator, open_edit_product
 from .dialogs.purchasing_dialogs import open_purchase_orders, open_suppliers
+from .dialogs.report_dialogs import open_reports
 from .dialogs.sales_dialogs import open_returns
 from .widgets import FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, handle_errors, make_tree
 
@@ -32,11 +32,13 @@ class InventoryTab:
     def __init__(self, parent: tk.Frame, ctx: AppContext) -> None:
         self.ctx = ctx
         self.fields: dict[str, tk.Widget] = {}
+        self.sort_column: str | None = None
+        self.sort_desc = False
         self._build_form(parent)
         self._build_search(parent)
         self._build_table(parent)
 
-
+    # ------------------------------------------------------------------ layout
     def _build_form(self, parent) -> None:
         frame = tk.LabelFrame(parent, text=" Product Entry Form ", bg=WHITE, fg="#212529",
                               font=(FONT, 10, "bold"), bd=1, relief="solid")
@@ -94,6 +96,24 @@ class InventoryTab:
         tk.Label(bar, text="🔴 Low stock    🟠 Expiring ≤ 30 days    ⚫ Expired", bg="#f4f6f9", fg="#495057",
                  font=(FONT, 9)).pack(side="right", padx=10)
 
+        filters = tk.Frame(parent, bg="#f4f6f9")
+        filters.pack(fill="x", padx=5)
+        tk.Label(filters, text="Category:", bg="#f4f6f9", fg="#212529", font=(FONT, 10, "bold")).pack(
+            side="left", padx=5)
+        self.filter_category = ttk.Combobox(filters, values=["All"] + list(config.CATEGORIES), state="readonly",
+                                            width=16)
+        self.filter_category.pack(side="left", padx=5)
+        self.filter_category.set("All")
+        self.filter_category.bind("<<ComboboxSelected>>", lambda _e: self.refresh_table())
+        self.only_low = tk.BooleanVar(value=False)
+        self.only_expiry = tk.BooleanVar(value=False)
+        tk.Checkbutton(filters, text="Low stock only", variable=self.only_low, command=self.refresh_table,
+                       bg="#f4f6f9").pack(side="left", padx=10)
+        tk.Checkbutton(filters, text="Expiring / expired only", variable=self.only_expiry,
+                       command=self.refresh_table, bg="#f4f6f9").pack(side="left", padx=10)
+        tk.Label(filters, text="Tip: click a column heading to sort", bg="#f4f6f9", fg="#6c757d",
+                 font=(FONT, 9)).pack(side="right", padx=10)
+
     def _build_table(self, parent) -> None:
         box, self.tree = make_tree(parent, COLUMNS, WIDTHS)
         box.pack(fill="both", expand=True, padx=5, pady=5)
@@ -101,11 +121,17 @@ class InventoryTab:
         self.tree.tag_configure("expiring", background="#ffe8cc", foreground="#8a4b08")
         self.tree.tag_configure("expired", background="#842029", foreground="#ffffff")
         self.tree.bind("<Double-1>", self.open_edit)
+        for column in COLUMNS:
+            self.tree.heading(column, text=column, command=lambda c=column: self.sort_by(c))
 
-
+    # ------------------------------------------------------------------ table
     @handle_errors
     def refresh_table(self) -> None:
         rows = inventory_service.list_products(self.ctx.conn, self.ctx.session, self.search_entry.get())
+        rows = inventory_service.filter_products(
+            rows, category=self.filter_category.get(), low_stock_only=self.only_low.get(),
+            expiry_only=self.only_expiry.get())
+        rows = inventory_service.sort_products(rows, self.sort_column, self.sort_desc)
         for item in self.tree.get_children():
             self.tree.delete(item)
         for row in rows:
@@ -117,7 +143,26 @@ class InventoryTab:
 
     def reset_search(self) -> None:
         self.search_entry.delete(0, tk.END)
+        self.filter_category.set("All")
+        self.only_low.set(False)
+        self.only_expiry.set(False)
+        self.sort_column = None
+        self.sort_desc = False
+        self._update_headings()
         self.refresh_table()
+
+    def sort_by(self, column: str) -> None:
+        if self.sort_column == column:
+            self.sort_desc = not self.sort_desc
+        else:
+            self.sort_column, self.sort_desc = column, False
+        self._update_headings()
+        self.refresh_table()
+
+    def _update_headings(self) -> None:
+        for column in COLUMNS:
+            arrow = (" ▼" if self.sort_desc else " ▲") if column == self.sort_column else ""
+            self.tree.heading(column, text=column + arrow)
 
     def _selected_id(self) -> int | None:
         selected = self.tree.selection()
@@ -130,7 +175,7 @@ class InventoryTab:
                             for a in alerts)
             messagebox.showwarning("Low Stock Notice", "Warning! Below items are running low on stock:\n\n" + lines)
 
-
+    # ------------------------------------------------------------------ form
     def clear_form(self) -> None:
         for label, widget in self.fields.items():
             if isinstance(widget, ttk.Combobox):
@@ -147,7 +192,7 @@ class InventoryTab:
                            batch=get("Batch No"), barcode=get("Barcode"), warehouse=get("Warehouse"),
                            expiry=get("Expiry (YYYY-MM)"))
 
-
+    # ------------------------------------------------------------------ actions
     @handle_errors
     def add_product(self) -> None:
         inventory_service.add_product(self.ctx.conn, self.ctx.session, self._read_form())

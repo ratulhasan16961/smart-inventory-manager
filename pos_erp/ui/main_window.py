@@ -1,4 +1,4 @@
-"""Main window: dashboard cards + POS and Inventory tabs."""
+"""Main window: dashboard cards + POS, Inventory and (Admin) Dashboard tabs."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -8,6 +8,7 @@ from .. import config
 from ..money import fmt
 from ..services import lists_service, reporting_service
 from .context import AppContext
+from .dashboard_tab import DashboardTab
 from .inventory_tab import InventoryTab
 from .pos_tab import PosTab
 from .widgets import BG, FONT
@@ -39,6 +40,11 @@ class MainWindow:
 
         self.pos = PosTab(pos_frame, self.ctx)
         self.inventory = InventoryTab(inventory_frame, self.ctx)
+        self.dashboard: DashboardTab | None = None
+        if self.ctx.can("reports.view"):
+            dashboard_frame = tk.Frame(notebook, bg=BG)
+            notebook.add(dashboard_frame, text="  📈 Dashboard  ")
+            self.dashboard = DashboardTab(dashboard_frame, self.ctx)
         self.refresh()
         self.inventory.check_low_stock_alerts()
         root.after(200, self.pos.focus_barcode)
@@ -57,10 +63,13 @@ class MainWindow:
             self.cards[key].config(text=text)
         self._sync_lists()
         self.inventory.refresh_table()
+        if self.dashboard is not None:
+            self.dashboard.refresh()
 
     def _sync_lists(self) -> None:
-        """Keep the Category / Warehouse dropdowns in step with the managed lists."""
+        """Keep the Category / Warehouse dropdowns (and the category filter) in step with the managed lists."""
         lists_service.apply(self.ctx.conn)
         fields = self.inventory.fields
         fields["Category"].configure(values=list(config.CATEGORIES))
         fields["Warehouse"].configure(values=list(config.WAREHOUSES))
+        self.inventory.filter_category.configure(values=["All"] + list(config.CATEGORIES))

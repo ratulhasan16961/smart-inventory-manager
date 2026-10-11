@@ -18,7 +18,7 @@ CSV_COLUMNS = ("id", "name", "category", "buying_price", "price", "stock", "min_
                "batch", "barcode", "warehouse", "expiry")
 
 
-
+# --------------------------------------------------------------------------- expiry / flags
 def valid_expiry(text: str) -> bool:
     if not text:
         return True
@@ -56,7 +56,7 @@ def product_flag(row: sqlite3.Row, today: datetime | None = None) -> str | None:
     return status
 
 
-
+# --------------------------------------------------------------------------- validation
 @dataclass
 class ProductForm:
     """Raw (string) values as typed by the user."""
@@ -87,7 +87,7 @@ def parse_form(form: ProductForm) -> dict:
         raise ValidationError("Prices, stock and minimum alert cannot be negative!")
     expiry = form.expiry.strip()
     if expiry and valid_expiry(expiry):
-     expiry = datetime.strptime(expiry, "%Y-%m").strftime("%Y-%m")  # '2027-5' -> '2027-05'
+        expiry = datetime.strptime(expiry, "%Y-%m").strftime("%Y-%m")  # '2027-5' -> '2027-05'
     if not valid_expiry(expiry):
         raise ValidationError("Expiry must be in YYYY-MM format (e.g. 2027-03)!")
     return {
@@ -111,7 +111,7 @@ def _get_active(conn: sqlite3.Connection, product_id: int) -> sqlite3.Row:
     return row
 
 
-
+# --------------------------------------------------------------------------- queries
 def get_product(conn: sqlite3.Connection, session: Session, product_id: int) -> sqlite3.Row:
     session.require("inventory.view")
     return _get_active(conn, product_id)
@@ -146,7 +146,7 @@ def find_for_sale(conn: sqlite3.Connection, session: Session, key: str) -> sqlit
     return row
 
 
-
+# --------------------------------------------------------------------------- commands
 def add_product(conn: sqlite3.Connection, session: Session, form: ProductForm) -> int:
     session.require("inventory.manage")
     data = parse_form(form)
@@ -231,7 +231,7 @@ def deactivate_product(conn: sqlite3.Connection, session: Session, product_id: i
         audit.log(conn, session.username, f"Deleted (deactivated) product ID {product_id}: {product['name']}")
 
 
-
+# --------------------------------------------------------------------------- CSV
 def export_csv(conn: sqlite3.Connection, session: Session, path: str | Path) -> int:
     session.require("inventory.export")
     rows = conn.execute("SELECT * FROM products WHERE is_active = 1 ORDER BY id").fetchall()
@@ -342,3 +342,35 @@ def import_csv(conn: sqlite3.Connection, session: Session, path: str | Path, dry
     except sqlite3.IntegrityError:
         report.created = report.updated = 0
     return report
+
+
+# --------------------------------------------------------------------------- table views
+SORT_KEYS = {"ID": "id", "Name": "name", "Category": "category", "Buying Price": "cost_cents",
+             "Price": "price_cents", "Stock": "stock", "Min Alert": "min_alert", "Batch": "batch",
+             "Barcode": "barcode", "Warehouse": "warehouse", "Expiry": "expiry"}
+
+
+def filter_products(rows, category: str | None = None, low_stock_only: bool = False,
+                    expiry_only: bool = False, today: datetime | None = None) -> list:
+    """Narrow a product list. ``category`` of None or 'All' means every category."""
+    result = []
+    for row in rows:
+        if category and category != "All" and row["category"].lower() != category.lower():
+            continue
+        if low_stock_only and row["stock"] > row["min_alert"]:
+            continue
+        if expiry_only and expiry_status(row["expiry"], today) is None:
+            continue
+        result.append(row)
+    return result
+
+
+def sort_products(rows, column: str | None, descending: bool = False) -> list:
+    """Sort by a table column title (text ignores case; empty values always come last)."""
+    key = SORT_KEYS.get(column or "")
+    if key is None:
+        return list(rows)
+    filled = [r for r in rows if r[key] not in (None, "")]
+    blank = [r for r in rows if r[key] in (None, "")]
+    filled.sort(key=lambda r: r[key].lower() if isinstance(r[key], str) else r[key], reverse=descending)
+    return filled + blank

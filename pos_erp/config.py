@@ -26,6 +26,7 @@ LOCKOUT_MINUTES = 5
 
 EXPIRY_WARNING_DAYS = 30
 LOYALTY_CENTS_PER_POINT = 10_000
+LOYALTY_POINT_VALUE_CENTS = 100  # one point is worth 1.00 when redeemed (that is 1% back on the earning rate)
 
 PAYMENT_METHODS = ("Cash", "Card", "bKash / Mobile", "AliPay / WeChat")
 CATEGORIES = ("Electronics", "Grocery", "Clothing", "General")

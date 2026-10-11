@@ -1,19 +1,21 @@
-"""POS Billing tab: customer fields, live cart table, cash received / change due, checkout."""
+"""POS Billing tab: customer lookup + loyalty points, live cart table, cash received / change due, checkout."""
 from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from .. import config
-from ..errors import POSError
-from ..money import fmt, to_cents
-from ..services import inventory_service, sales_service, settings_service, till_service
+from ..errors import POSError, ValidationError
+from ..money import fmt, plain, to_cents
+from ..services import customer_service, inventory_service, sales_service, settings_service, till_service
 from .context import AppContext
+from .dialogs.customer_dialogs import open_customer_history
 from .dialogs.sales_dialogs import open_invoices, show_receipt
 from .widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, handle_errors,
                       make_tree)
 
 MUTED = "#6c757d"
+LOOKUP_HINT = "Enter a phone number and press Lookup to see loyalty points."
 
 
 class PosTab:
@@ -50,17 +52,31 @@ class PosTab:
                                       state="readonly")
         self.pay_combo.grid(row=0, column=10, padx=4, pady=6)
         self.pay_combo.set(config.PAYMENT_METHODS[0])
+
         self.cust_name_e = field("Customer Name:", 1, 0, 14)
-        self.cust_phone_e = field("Phone:", 1, 2, 14, columnspan=2, sticky="w")
+        self.cust_phone_e = field("Phone:", 1, 2, 14)
+        lookup = CanvasButton(frame, "🔎 Lookup", self.lookup_customer, "#0d6efd", width=90, height=28)
+        lookup.grid(row=1, column=4, padx=6, pady=6)
+        lookup.set_enabled(self.ctx.can("customers.lookup"))
         self.received_e = field(f"Received ({config.CURRENCY_SYMBOL}):", 1, 5, 9)
         self.lbl_change = tk.Label(frame, text="", bg=WHITE, fg=MUTED, font=(FONT, 10, "bold"))
         self.lbl_change.grid(row=1, column=7, columnspan=4, padx=6, sticky="w")
+
+        self.points_e = field("Use points:", 2, 0, 8)
+        self.lbl_loyalty = tk.Label(frame, text=LOOKUP_HINT, bg=WHITE, fg=MUTED, font=(FONT, 10))
+        self.lbl_loyalty.grid(row=2, column=2, columnspan=8, padx=6, sticky="w")
+        history = CanvasButton(frame, "📜 History", self.show_history, "#6c757d", width=90, height=28)
+        history.grid(row=2, column=10, padx=6, pady=6)
+        history.set_enabled(self.ctx.can("customers.lookup"))
 
         self.prod_id_e.bind("<Return>", self.add_to_cart)
         self.prod_qty_e.bind("<Return>", self.add_to_cart)
         self.disc_e.bind("<KeyRelease>", self.update_summary)
         self.tax_e.bind("<KeyRelease>", self.update_summary)
+        self.points_e.bind("<KeyRelease>", self.update_summary)
         self.received_e.bind("<KeyRelease>", lambda _e: self._update_change())
+        self.cust_phone_e.bind("<Return>", self.lookup_customer)
+        self.cust_phone_e.bind("<KeyRelease>", self._phone_changed)
         self.pay_combo.bind("<<ComboboxSelected>>", lambda _e: self._on_payment_change())
 
     def _build_cart(self, parent) -> None:
@@ -86,6 +102,48 @@ class PosTab:
                                        width=150, height=34)
         invoices_button.pack(side="right", padx=5)
         invoices_button.set_enabled(self.ctx.can("invoices.view"))
+
+    # ------------------------------------------------------------------ customer + points
+    def _phone_changed(self, event=None) -> None:
+        if getattr(event, "keysym", "") in ("Return", "KP_Enter"):
+            return
+        self.lbl_loyalty.config(text=LOOKUP_HINT, fg=MUTED)
+
+    def _points(self) -> int:
+        text = self.points_e.get().strip()
+        if not text:
+            return 0
+        try:
+            points = int(text)
+        except ValueError:
+            raise ValidationError("Points must be a whole number (0 or more)!") from None
+        if points < 0:
+            raise ValidationError("Points must be a whole number (0 or more)!")
+        return points
+
+    def _effective_discount(self) -> str:
+        """Typed discount plus the value of any loyalty points (used for the live preview)."""
+        points = self._points()
+        text = self.disc_e.get()
+        if not points:
+            return text
+        return plain(to_cents(text or 0) + customer_service.points_value(points))
+
+    @handle_errors
+    def lookup_customer(self, _event=None) -> None:
+        info = customer_service.find_by_phone(self.ctx.conn, self.ctx.session, self.cust_phone_e.get())
+        if info is None:
+            self.lbl_loyalty.config(text="New customer: no purchase history yet.", fg=MUTED)
+            return
+        if not self.cust_name_e.get().strip():
+            self.cust_name_e.insert(0, info.name)
+        value = fmt(customer_service.points_value(info.points))
+        self.lbl_loyalty.config(
+            text=f"{info.name}: {info.points} points (worth {value})  |  spent {fmt(info.spent_cents)}  |  "
+                 f"{info.visits} visit(s)", fg="#198754")
+
+    def show_history(self) -> None:
+        open_customer_history(self.ctx, self.cust_phone_e.get())
 
     # ------------------------------------------------------------------ cart
     def focus_barcode(self) -> None:
@@ -113,14 +171,16 @@ class PosTab:
             self._update_change()
             return
         try:
-            quote = sales_service.quote(self.ctx.conn, self._items(), self.disc_e.get(), self.tax_e.get())
-        except POSError:
-            self.lbl_summary.config(text="Check the discount / tax values", fg="#dc3545")
+            points = self._points()
+            quote = sales_service.quote(self.ctx.conn, self._items(), self._effective_discount(), self.tax_e.get())
+        except (POSError, ValueError):
+            self.lbl_summary.config(text="Check the discount / tax / points values", fg="#dc3545")
             self._update_change()
             return
         self._total_cents = quote.total_cents
+        used = f" (incl. {points} pts)" if points else ""
         self.lbl_summary.config(
-            text=(f"Subtotal: {fmt(quote.subtotal_cents)}    Discount: -{fmt(quote.discount_cents)}    "
+            text=(f"Subtotal: {fmt(quote.subtotal_cents)}    Discount: -{fmt(quote.discount_cents)}{used}    "
                   f"Tax ({quote.tax_rate:f}%): +{fmt(quote.tax_cents)}    TOTAL: {fmt(quote.total_cents)}"),
             fg=DARK)
         self._update_change()
@@ -210,10 +270,11 @@ class PosTab:
         invoice = till_service.checkout_with_payment(
             self.ctx.conn, self.ctx.session, self._items(), self.disc_e.get(), self.tax_e.get(),
             self.pay_combo.get(), self.cust_name_e.get(), self.cust_phone_e.get(),
-            tendered=self.received_e.get() if self._cash() else None)
+            tendered=self.received_e.get() if self._cash() else None, redeem_points=self._points())
         self.cart.clear()
-        for entry in (self.cust_name_e, self.cust_phone_e):
+        for entry in (self.cust_name_e, self.cust_phone_e, self.points_e):
             entry.delete(0, tk.END)
+        self.lbl_loyalty.config(text=LOOKUP_HINT, fg=MUTED)
         self.disc_e.delete(0, tk.END)
         self.disc_e.insert(0, "0")
         if self._cash():

@@ -52,7 +52,16 @@ def _upgrade_v3(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_invoices_status ON invoices (status)")
 
 
-UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {2: _upgrade_v2, 3: _upgrade_v3}
+def _upgrade_v4(conn: sqlite3.Connection) -> None:
+    """Loyalty points redeemed at the till (kept per invoice so a void can give them back)."""
+    conn.execute("ALTER TABLE invoices ADD COLUMN points_redeemed INTEGER NOT NULL DEFAULT 0 "
+                 "CHECK (points_redeemed >= 0)")
+    conn.execute("ALTER TABLE invoices ADD COLUMN points_value_cents INTEGER NOT NULL DEFAULT 0 "
+                 "CHECK (points_value_cents >= 0)")
+    conn.execute("CREATE INDEX idx_invoices_phone ON invoices (customer_phone)")
+
+
+UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4}
 LATEST_VERSION = max(UPGRADES)
 
 

@@ -44,10 +44,10 @@ class UpgradeV3Tests(unittest.TestCase):
         ensure_schema(conn)
         conn.execute("INSERT INTO invoices (invoice_no, subtotal_cents, total_cents, payment_method, cashier, created_at)"
                      " VALUES ('INV-X', 500, 500, 'Cash', 'a', '2026-01-01 10:00:00')")
-        self.assertEqual(apply_upgrades(conn), [2, 3])
+        self.assertEqual(apply_upgrades(conn), [2, 3, 4])
         row = conn.execute("SELECT * FROM invoices").fetchone()
         self.assertEqual((row["tendered_cents"], row["change_cents"], row["status"]), (500, 0, "Completed"))
-        self.assertEqual(LATEST_VERSION, 3)
+        self.assertEqual(LATEST_VERSION, 4)
         with self.assertRaises(sqlite3.IntegrityError):
             conn.execute("UPDATE invoices SET status = 'Weird'")
 

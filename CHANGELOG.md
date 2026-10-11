@@ -17,6 +17,23 @@
 - The Warehouse dropdown is wider.
 # Changelog
 
+## 2.3.0
+
+### Added
+- Reorder from low stock: "From Low Stock" in Purchase Orders suggests quantities (2 x minimum alert - stock -
+  what is already on order), remembers the last supplier and unit cost, and creates one purchase order.
+- Customer lookup at the till (by phone): name, loyalty points and their value, total spent, visits, and a purchase
+  history window with receipts. Cashiers can use it.
+- Loyalty redemption: "Use points" lowers the bill (1 point = 1.00). It cannot exceed the customer's points or the
+  bill, and voiding the invoice gives the points back.
+- Inventory table: click a heading to sort, filter by category, "low stock only", "expiring / expired only".
+- Dashboard tab (Admin): net revenue for the last 30 days as a bar chart, top sellers and a low-stock list.
+- Database upgrade v4: `points_redeemed` and `points_value_cents` on invoices.
+
+### Changed
+- Redeemed points are part of the invoice discount, so reports show them under "Discounts given".
+- Receipts show how many points were used.
+
 ## 2.2.0
 
 ### Added

@@ -64,6 +64,10 @@ functions in `db/upgrades.py`, recorded in `schema_migrations`; a file backup is
 `stock_movements` CHECK constraint stays unchanged. The invoice keeps its history (`status = 'Voided'`).
 11. **Cash tendering wraps checkout.** `till_service.checkout_with_payment` runs `sales_service.checkout` and the
 payment update in one transaction (nested savepoint), so an insufficient payment rolls the whole sale back.
+12. **Points are a discount.** Redeemed loyalty points are added to the invoice discount before tax; the points and
+their value are also stored on the invoice so a void can restore them.
+13. **Reorder suggestions are derived, never stored.** `purchase_service.reorder_suggestions` computes them from
+stock, minimum alerts and open purchase orders each time, so they can never go stale.
 
 ## Permissions
 

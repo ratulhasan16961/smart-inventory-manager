@@ -10,6 +10,7 @@ from ..errors import NotFoundError, ValidationError
 from ..money import fmt, to_cents
 from ..permissions import Session
 from . import audit, stock_service
+from ..money import plain
 
 OPEN_STATUSES = ("Ordered", "Partially Received")
 
@@ -170,3 +171,51 @@ def cancel_purchase_order(conn: sqlite3.Connection, session: Session, po_id: int
         conn.execute("UPDATE purchase_orders SET status = 'Cancelled', closed_at = ? WHERE id = ?",
                      (timeutil.stamp(), po_id))
         audit.log(conn, session.username, f"Cancelled purchase order {po['po_number']}")
+
+
+
+# --------------------------------------------------------------------------- reorder suggestions
+@dataclass(frozen=True)
+class ReorderSuggestion:
+    product_id: int
+    name: str
+    stock: int
+    min_alert: int
+    on_order: int
+    quantity: int
+    unit_cost: str            # decimal text, ready for POLine
+    supplier_id: int | None
+    supplier_name: str
+
+
+_LAST_SUPPLIER = """(SELECT {column} FROM purchase_order_items i
+        JOIN purchase_orders po ON po.id = i.po_id JOIN suppliers s ON s.id = po.supplier_id
+        WHERE i.product_id = p.id AND s.is_active = 1 ORDER BY po.id DESC LIMIT 1)"""
+
+_REORDER_SQL = f"""
+    SELECT p.id, p.name, p.stock, p.min_alert, p.cost_cents,
+           COALESCE((SELECT SUM(i.quantity_ordered - i.quantity_received)
+                     FROM purchase_order_items i JOIN purchase_orders po ON po.id = i.po_id
+                     WHERE i.product_id = p.id AND po.status IN ('Ordered', 'Partially Received')), 0) AS on_order,
+           {_LAST_SUPPLIER.format(column="s.id")} AS supplier_id,
+           {_LAST_SUPPLIER.format(column="s.name")} AS supplier_name,
+           (SELECT i.unit_cost_cents FROM purchase_order_items i JOIN purchase_orders po ON po.id = i.po_id
+            WHERE i.product_id = p.id AND po.status <> 'Cancelled' ORDER BY po.id DESC LIMIT 1) AS last_cost
+    FROM products p WHERE p.is_active = 1 AND p.stock <= p.min_alert ORDER BY p.name"""
+
+
+def reorder_suggestions(conn: sqlite3.Connection, session: Session, multiplier: int = 2) -> list[ReorderSuggestion]:
+    """Products at or below their minimum alert, with a suggested order quantity:
+    target stock = multiplier x minimum alert, minus current stock, minus what is already on open orders.
+    The supplier and unit cost come from the product's most recent order (the product's cost otherwise)."""
+    session.require("purchasing.manage")
+    result = []
+    for r in conn.execute(_REORDER_SQL).fetchall():
+        target = max(r["min_alert"] * multiplier, r["min_alert"] + 1)
+        quantity = target - r["stock"] - r["on_order"]
+        if quantity <= 0:
+            continue
+        cost = r["last_cost"] if r["last_cost"] is not None else r["cost_cents"]
+        result.append(ReorderSuggestion(r["id"], r["name"], r["stock"], r["min_alert"], r["on_order"], quantity,
+                                        plain(cost), r["supplier_id"], r["supplier_name"] or ""))
+    return result

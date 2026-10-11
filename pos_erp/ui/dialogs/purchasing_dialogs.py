@@ -8,6 +8,7 @@ from ...money import fmt, plain, to_cents
 from ...services import inventory_service, purchase_service
 from ...services.purchase_service import POLine
 from ..context import AppContext
+from .reorder_dialog import open_reorder
 from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, fill_tree,
                        handle_errors, make_tree)
 
@@ -258,5 +259,6 @@ def open_purchase_orders(ctx: AppContext) -> None:
     CanvasButton(bar, "➕ New Order", new_order, "#198754", width=120, height=30).pack(side="left", padx=4)
     CanvasButton(bar, "📥 Receive Stock", receive, "#0d6efd", width=130, height=30).pack(side="left", padx=4)
     CanvasButton(bar, "✖ Cancel Order", cancel, "#dc3545", width=120, height=30).pack(side="left", padx=4)
+    CanvasButton(bar, "⚡ From Low Stock", lambda: open_reorder(ctx, load_orders), "#fd7e14", width=150, height=30).pack(side="left", padx=4)
     CanvasButton(bar, "↻ Refresh", load_orders, "#6c757d", width=90, height=30).pack(side="left", padx=4)
     load_orders()

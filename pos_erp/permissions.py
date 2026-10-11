@@ -28,7 +28,8 @@ ALL_PERMISSIONS = frozenset({
     "barcode.generate",
     "users.manage",
     "sales.void",          # void an invoice (restocks and reverses the sale)
-    "invoices.view",       # list invoices, reprint receipts
+    "invoices.view",
+    "customers.lookup",    # name, points and history of one customer, found by phone number            # list invoices, reprint receipts
     "reports.view",        # date-range sales, low stock, expiry and stock value reports               # create / disable users, reset passwords, change roles
     "settings.manage",     # shop name, currency, default tax, receipt footer
     "system.restore",      # restore a database backup
@@ -37,8 +38,8 @@ ALL_PERMISSIONS = frozenset({
 
 PERMISSIONS_BY_ROLE: dict[str, frozenset[str]] = {
     config.ROLE_ADMIN: ALL_PERMISSIONS,
-    config.ROLE_CASHIER: frozenset({"sales.create", "invoices.view", "inventory.view", "barcode.generate",
-                                    "account.update"}),
+    config.ROLE_CASHIER: frozenset({"sales.create", "invoices.view", "customers.lookup", "inventory.view",
+                                    "barcode.generate", "account.update"}),
 }
 
 
