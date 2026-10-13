@@ -18,7 +18,6 @@ CSV_COLUMNS = ("id", "name", "category", "buying_price", "price", "stock", "min_
                "batch", "barcode", "warehouse", "expiry")
 
 
-# --------------------------------------------------------------------------- expiry / flags
 def valid_expiry(text: str) -> bool:
     if not text:
         return True
@@ -56,7 +55,6 @@ def product_flag(row: sqlite3.Row, today: datetime | None = None) -> str | None:
     return status
 
 
-# --------------------------------------------------------------------------- validation
 @dataclass
 class ProductForm:
     """Raw (string) values as typed by the user."""
@@ -111,7 +109,6 @@ def _get_active(conn: sqlite3.Connection, product_id: int) -> sqlite3.Row:
     return row
 
 
-# --------------------------------------------------------------------------- queries
 def get_product(conn: sqlite3.Connection, session: Session, product_id: int) -> sqlite3.Row:
     session.require("inventory.view")
     return _get_active(conn, product_id)
@@ -146,7 +143,6 @@ def find_for_sale(conn: sqlite3.Connection, session: Session, key: str) -> sqlit
     return row
 
 
-# --------------------------------------------------------------------------- commands
 def add_product(conn: sqlite3.Connection, session: Session, form: ProductForm) -> int:
     session.require("inventory.manage")
     data = parse_form(form)
@@ -230,8 +226,6 @@ def deactivate_product(conn: sqlite3.Connection, session: Session, product_id: i
         conn.execute("UPDATE products SET is_active = 0, barcode = NULL WHERE id = ?", (product_id,))
         audit.log(conn, session.username, f"Deleted (deactivated) product ID {product_id}: {product['name']}")
 
-
-# --------------------------------------------------------------------------- CSV
 def export_csv(conn: sqlite3.Connection, session: Session, path: str | Path) -> int:
     session.require("inventory.export")
     rows = conn.execute("SELECT * FROM products WHERE is_active = 1 ORDER BY id").fetchall()
@@ -344,7 +338,6 @@ def import_csv(conn: sqlite3.Connection, session: Session, path: str | Path, dry
     return report
 
 
-# --------------------------------------------------------------------------- table views
 SORT_KEYS = {"ID": "id", "Name": "name", "Category": "category", "Buying Price": "cost_cents",
              "Price": "price_cents", "Stock": "stock", "Min Alert": "min_alert", "Batch": "batch",
              "Barcode": "barcode", "Warehouse": "warehouse", "Expiry": "expiry"}

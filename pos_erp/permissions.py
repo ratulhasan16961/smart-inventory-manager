@@ -27,13 +27,13 @@ ALL_PERMISSIONS = frozenset({
     "account.update",
     "barcode.generate",
     "users.manage",
-    "sales.void",          # void an invoice (restocks and reverses the sale)
+    "sales.void",          
     "invoices.view",
-    "customers.lookup",    # name, points and history of one customer, found by phone number            # list invoices, reprint receipts
-    "reports.view",        # date-range sales, low stock, expiry and stock value reports               # create / disable users, reset passwords, change roles
-    "settings.manage",     # shop name, currency, default tax, receipt footer
-    "system.restore",      # restore a database backup
-    "lists.manage",        # categories and warehouses
+    "customers.lookup",    
+    "reports.view",        
+    "settings.manage",     
+    "system.restore",      
+    "lists.manage",       
 })
 
 PERMISSIONS_BY_ROLE: dict[str, frozenset[str]] = {

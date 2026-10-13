@@ -29,7 +29,6 @@ class LoginView:
         else:
             self._show_login()
 
-    # ------------------------------------------------------------------ helpers
     def _reset(self, title: str, size: str) -> None:
         self.root.geometry(SIZES[size])
         for child in self.frame.winfo_children():
@@ -55,10 +54,9 @@ class LoginView:
         entry = getattr(self, "user_entry", None)
         try:
             return entry.get().strip() if entry is not None else ""
-        except tk.TclError:           # the login screen was already replaced
+        except tk.TclError:          
             return ""
 
-    # ------------------------------------------------------------------ first run
     def _show_setup(self) -> None:
         self._reset("Welcome! Create the admin account", "setup")
         self._note("This is the first run.\nChoose the administrator username and password.")
@@ -82,7 +80,6 @@ class LoginView:
             return
         self._show_recovery_key(key, "Your account is ready", lambda: self._finish(session))
 
-    # ------------------------------------------------------------------ normal login
     def _show_login(self) -> None:
         self._reset("Enterprise POS System", "login")
         self.user_entry = self._entry("Username:")
@@ -125,9 +122,8 @@ class LoginView:
         CanvasButton(self.frame, "Save password", save, width=140, height=32).pack(pady=20)
         new_entry.focus_set()
 
-    # ------------------------------------------------------------------ forgot password
     def show_forgot(self) -> None:
-        prefill = self._typed_username()               # read it BEFORE the login widgets are destroyed
+        prefill = self._typed_username()               
         self._reset("Reset your password", "forgot")
         self._note("Enter your username, the recovery key you saved, and choose a new password.")
         self.forgot_user_e = self._entry("Username:")
@@ -155,7 +151,6 @@ class LoginView:
         self._show_recovery_key(new_key, "Save your NEW recovery key", self._show_login,
                                 note="The key you just used no longer works.")
 
-    # ------------------------------------------------------------------ recovery key screen
     def _show_recovery_key(self, key: str, title: str, then, note: str = "") -> None:
         self._after_key = then
         self._reset(title, "key")

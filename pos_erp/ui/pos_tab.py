@@ -27,7 +27,6 @@ class PosTab:
         self._build_cart(parent)
         self.render_cart()
 
-    # ------------------------------------------------------------------ layout
     def _build_billing(self, parent) -> None:
         frame = tk.LabelFrame(parent, text=" Customer Billing & POS Multi-Item Cart ", bg=WHITE, fg="#0d6efd",
                               font=(FONT, 10, "bold"), bd=1, relief="solid")
@@ -103,7 +102,6 @@ class PosTab:
         invoices_button.pack(side="right", padx=5)
         invoices_button.set_enabled(self.ctx.can("invoices.view"))
 
-    # ------------------------------------------------------------------ customer + points
     def _phone_changed(self, event=None) -> None:
         if getattr(event, "keysym", "") in ("Return", "KP_Enter"):
             return
@@ -145,7 +143,6 @@ class PosTab:
     def show_history(self) -> None:
         open_customer_history(self.ctx, self.cust_phone_e.get())
 
-    # ------------------------------------------------------------------ cart
     def focus_barcode(self) -> None:
         self.prod_id_e.focus_set()
 
@@ -185,7 +182,6 @@ class PosTab:
             fg=DARK)
         self._update_change()
 
-    # ------------------------------------------------------------------ cash
     def _cash(self) -> bool:
         return self.pay_combo.get() == till_service.cash_method()
 
@@ -216,7 +212,6 @@ class PosTab:
         else:
             self.lbl_change.config(text=f"Short by {fmt(-difference)}", fg="#dc3545")
 
-    # ------------------------------------------------------------------ cart actions
     @handle_errors
     def add_to_cart(self, _event=None) -> None:
         key = self.prod_id_e.get().strip()
@@ -261,7 +256,6 @@ class PosTab:
             self.cart.clear()
             self.render_cart()
 
-    # ------------------------------------------------------------------ checkout
     @handle_errors
     def process_sale(self) -> None:
         if not self.cart:

@@ -35,7 +35,7 @@ class CustomerLookupTests(DbTestCase):
         super().setUp()
         self.a = add_product(self.conn, "Phone", price="150.00", cost="100.00", stock=50)
         self.first = till_service.checkout_with_payment(
-            self.conn, ADMIN, [(self.a, 2)], customer_name="Sam", customer_phone="0170")      # 300.00 -> 3 points
+            self.conn, ADMIN, [(self.a, 2)], customer_name="Sam", customer_phone="0170")     
 
     def test_lookup_and_history(self):
         info = customer_service.find_by_phone(self.conn, CASHIER, " 0170 ")
@@ -68,7 +68,7 @@ class RedeemTests(DbTestCase):
         self.a = add_product(self.conn, "Phone", price="150.00", cost="100.00", stock=50)
         self.cheap = add_product(self.conn, "Pen", price="1.00", cost="0.50", stock=50)
         till_service.checkout_with_payment(self.conn, ADMIN, [(self.a, 2)], customer_name="Sam",
-                                           customer_phone="0170")                       # Sam has 3 points
+                                           customer_phone="0170")                      
 
     def points(self):
         return self.scalar("SELECT loyalty_points FROM customers WHERE phone = '0170'")
@@ -84,7 +84,7 @@ class RedeemTests(DbTestCase):
         self.assertEqual((invoice.discount_cents, invoice.total_cents), (200, 14800))
         meta = till_service.invoice_meta(self.conn, invoice.invoice_no)
         self.assertEqual((meta["points_redeemed"], meta["points_value_cents"]), (2, 200))
-        self.assertEqual(self.points(), 2)          # 3 + 1 earned - 2 used
+        self.assertEqual(self.points(), 2)         
         self.assertEqual(self.spent(), 44800)
         self.assertTrue(self.scalar("SELECT COUNT(*) FROM audit_logs WHERE action LIKE 'Redeemed 2 loyalty%'"))
 
@@ -93,7 +93,7 @@ class RedeemTests(DbTestCase):
         self.assertEqual((invoice.discount_cents, invoice.total_cents), (1100, 13900))
 
     def test_works_with_cash_tendering(self):
-        invoice = self.sale([(self.a, 1)], redeem_points=1, tendered="150")           # total 149.00
+        invoice = self.sale([(self.a, 1)], redeem_points=1, tendered="150")          
         meta = till_service.invoice_meta(self.conn, invoice.invoice_no)
         self.assertEqual((invoice.total_cents, meta["tendered_cents"], meta["change_cents"]), (14900, 15000, 100))
 
@@ -106,9 +106,9 @@ class RedeemTests(DbTestCase):
                 self.sale([(self.a, 1)], **kwargs)
             self.assertIn(fragment, str(ctx.exception))
         with self.assertRaises(ValidationError):
-            self.sale([(self.cheap, 1)], redeem_points=2)                              # 2.00 of points, 1.00 bill
+            self.sale([(self.cheap, 1)], redeem_points=2)                              
         with self.assertRaises(ValidationError):
-            self.sale([(self.a, 1)], discount="149.00", redeem_points=2)               # 149 + 2 > 150
+            self.sale([(self.a, 1)], discount="149.00", redeem_points=2)              
         self.assertEqual((self.points(), self.stock(self.a), self.scalar("SELECT COUNT(*) FROM invoices")),
                          (3, stock_before, 1))
 
@@ -128,7 +128,7 @@ class RedeemTests(DbTestCase):
         self.assertEqual(self.points(), 3)
 
     def test_void_removes_earned_points_and_restores_spent_points(self):
-        invoice = self.sale([(self.a, 1)], redeem_points=2)                            # 3 + 1 - 2 = 2
+        invoice = self.sale([(self.a, 1)], redeem_points=2)                            
         till_service.void_invoice(self.conn, ADMIN, invoice.invoice_no, "Mistake")
         self.assertEqual((self.points(), self.spent()), (3, 30000))
 
@@ -143,7 +143,7 @@ class RedeemTests(DbTestCase):
     def test_returns_still_work_on_a_redeemed_invoice(self):
         invoice = self.sale([(self.a, 1)], redeem_points=2)
         result = returns_service.process_return(self.conn, ADMIN, invoice.invoice_no, self.a, 1)
-        self.assertEqual(result.refund_cents, 14800)                                   # what was actually paid
+        self.assertEqual(result.refund_cents, 14800)                                   
 
 
 class SortFilterTests(DbTestCase):
@@ -201,7 +201,7 @@ class ReorderTests(DbTestCase):
     def test_basic_rules(self):
         s = self.suggestions()
         self.assertEqual(set(s), {"Tea", "Cable"})
-        self.assertEqual((s["Tea"].quantity, s["Cable"].quantity), (6, 20))        # 2 x min - stock
+        self.assertEqual((s["Tea"].quantity, s["Cable"].quantity), (6, 20))       
         self.assertEqual((s["Tea"].unit_cost, s["Cable"].unit_cost), ("3.00", "2.00"))
         self.assertEqual((s["Tea"].supplier_id, s["Tea"].supplier_name), (None, ""))
 
@@ -218,11 +218,11 @@ class ReorderTests(DbTestCase):
 
     def test_covered_or_received_products_disappear(self):
         self.order(self.tea, 6)
-        self.assertNotIn("Tea", self.suggestions())                                # fully covered by the open order
+        self.assertNotIn("Tea", self.suggestions())                               
         other = self.order(self.cable, 5)
         item = purchase_service.get_po_items(self.conn, ADMIN, other)[0]
         purchase_service.receive_purchase_order(self.conn, ADMIN, other, {item["id"]: 5})
-        self.assertEqual(self.suggestions()["Cable"].quantity, 20 - 5 - 0)          # stock 5, nothing left on order
+        self.assertEqual(self.suggestions()["Cable"].quantity, 20 - 5 - 0)         
 
     def test_inactive_supplier_is_not_suggested(self):
         self.order(self.tea, 1)
@@ -235,7 +235,7 @@ class ReorderTests(DbTestCase):
         items = purchase_service.get_po_items(self.conn, ADMIN, po_id)
         self.assertEqual(sorted((i["product_name"], i["quantity_ordered"], i["unit_cost_cents"]) for i in items),
                          [("Cable", 20, 200), ("Tea", 6, 300)])
-        self.assertEqual(self.suggestions(), {})                                   # everything is now on order
+        self.assertEqual(self.suggestions(), {})                                
 
     def test_permissions(self):
         with self.assertRaises(PermissionDenied):
@@ -251,12 +251,12 @@ class DashboardServiceTests(DbTestCase):
         super().setUp()
         self.a = add_product(self.conn, "A", price="10.00", cost="6.00", stock=100)
         self.b = add_product(self.conn, "B", price="20.00", cost="5.00", stock=100)
-        first = self.sale(datetime(2026, 10, 6, 10, 0), [(self.a, 2)])            # 20.00
-        self.sale(datetime(2026, 10, 7, 12, 0), [(self.b, 1)])                    # 20.00
-        self.sale(datetime(2026, 10, 8, 9, 0), [(self.a, 1)])                     # 10.00
+        first = self.sale(datetime(2026, 10, 6, 10, 0), [(self.a, 2)])           
+        self.sale(datetime(2026, 10, 7, 12, 0), [(self.b, 1)])                  
+        self.sale(datetime(2026, 10, 8, 9, 0), [(self.a, 1)])                    
         voided = self.sale(datetime(2026, 10, 8, 15, 0), [(self.a, 1)])
         till_service.void_invoice(self.conn, ADMIN, voided.invoice_no, "Customer left")
-        returns_service.process_return(self.conn, ADMIN, first.invoice_no, self.a, 1)   # refund 10.00
+        returns_service.process_return(self.conn, ADMIN, first.invoice_no, self.a, 1)  
 
     def test_daily_revenue_fills_gaps_and_nets_out_refunds_and_voids(self):
         series = dashboard_service.daily_revenue(self.conn, ADMIN, 5, today=date(2026, 10, 8))
@@ -268,7 +268,7 @@ class DashboardServiceTests(DbTestCase):
     def test_top_sellers(self):
         today = date(2026, 10, 8)
         self.assertEqual(dashboard_service.top_sellers(self.conn, ADMIN, 5, today=today),
-                         [("A", 2, 2000), ("B", 1, 2000)])             # equal revenue: alphabetical
+                         [("A", 2, 2000), ("B", 1, 2000)])          
         self.assertEqual(dashboard_service.top_sellers(self.conn, ADMIN, 5, limit=1, today=today), [("A", 2, 2000)])
         self.assertEqual(dashboard_service.top_sellers(self.conn, ADMIN, 1, today=today), [("A", 1, 1000)])
 

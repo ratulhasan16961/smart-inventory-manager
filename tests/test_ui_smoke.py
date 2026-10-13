@@ -8,8 +8,8 @@ from unittest import mock
 
 try:
     import tkinter as tk
-    import tkinter.messagebox  # noqa: F401  (imported so it can be patched)
-except ImportError:  # pragma: no cover
+    import tkinter.messagebox 
+except ImportError:  
     tk = None
 
 from pos_erp.services import auth_service, sales_service
@@ -35,7 +35,6 @@ class UiSmokeTests(unittest.TestCase):
         from pos_erp.ui.widgets import apply_theme
         apply_theme(self.root)
 
-    # ------------------------------------------------------------------ helpers
     def window(self, session=ADMIN):
         from pos_erp.ui.main_window import MainWindow
         return MainWindow(self.root, self.conn, session)
@@ -52,7 +51,6 @@ class UiSmokeTests(unittest.TestCase):
         sessions = []
         return LoginView(self.root, self.conn, sessions.append), sessions
 
-    # ------------------------------------------------------------------ main window
     def test_main_window_builds_and_shows_stats(self):
         add_product(self.conn, "Mouse", price="15.00", cost="8.00", stock=10, barcode="111")
         win = self.window()
@@ -114,7 +112,6 @@ class UiSmokeTests(unittest.TestCase):
         self.root.update_idletasks()
         self.assert_no_errors()
 
-    # ------------------------------------------------------------------ login
     def test_login_with_valid_password(self):
         view, sessions = self.login_view()
         self.conn.execute("UPDATE users SET must_change_password = 0")
@@ -135,7 +132,7 @@ class UiSmokeTests(unittest.TestCase):
         view, sessions = self.login_view()
         view.user_entry.insert(0, "admin")
         view.pass_entry.insert(0, "1234")
-        view.authenticate()          # switches to the "choose a new password" screen
+        view.authenticate()         
         self.assertEqual(sessions, [])
         self.assert_no_errors()
 

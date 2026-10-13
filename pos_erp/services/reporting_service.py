@@ -13,7 +13,6 @@ from ..permissions import Session
 from .inventory_service import expiry_status
 
 
-# --------------------------------------------------------------------------- dashboard + analytics
 @dataclass(frozen=True)
 class DashboardStats:
     total_items: int
@@ -98,7 +97,6 @@ def customers(conn: sqlite3.Connection, session: Session) -> list[sqlite3.Row]:
                         "ORDER BY total_spent_cents DESC").fetchall()
 
 
-# --------------------------------------------------------------------------- date-range sales report
 @dataclass(frozen=True)
 class DailyRow:
     day: str
@@ -121,9 +119,9 @@ class SalesReport:
     voided_orders: int
     voided_cents: int
     daily: tuple[DailyRow, ...]
-    top_products: tuple[tuple[str, int, int], ...]    # (product, units, revenue)
-    payments: tuple[tuple[str, int, int], ...]        # (method, orders, revenue)
-    categories: tuple[tuple[str, int, int], ...]      # (category, units, revenue)
+    top_products: tuple[tuple[str, int, int], ...]    
+    payments: tuple[tuple[str, int, int], ...]       
+    categories: tuple[tuple[str, int, int], ...]     
 
     @property
     def net_cents(self) -> int:
@@ -222,8 +220,6 @@ def export_sales_report_csv(session: Session, report: SalesReport, path: str | P
             writer.writerow(header)
             writer.writerows(body)
 
-
-# --------------------------------------------------------------------------- snapshot reports
 LOW_STOCK_HEADER = ("ID", "Product", "Category", "Warehouse", "Stock", "Min Alert", "Short by")
 EXPIRY_HEADER = ("ID", "Product", "Batch", "Expiry", "Status", "Stock", "Stock Value (cost)")
 VALUATION_HEADER = ("Category", "Products", "Units", "Cost Value", "Retail Value")

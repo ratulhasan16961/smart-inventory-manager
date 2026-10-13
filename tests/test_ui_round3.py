@@ -4,8 +4,8 @@ from unittest import mock
 
 try:
     import tkinter as tk
-    import tkinter.messagebox  # noqa: F401
-except ImportError:  # pragma: no cover
+    import tkinter.messagebox 
+except ImportError: 
     tk = None
 
 from pos_erp.services import purchase_service, till_service
@@ -37,7 +37,6 @@ class UiRound3Tests(unittest.TestCase):
     def names(self, tab):
         return [tab.tree.item(item, "values")[1] for item in tab.tree.get_children()]
 
-    # ------------------------------------------------------------------ dashboard
     def test_dashboard_tab_only_exists_with_the_reports_permission(self):
         add_product(self.conn, "A", price="10.00", stock=10, barcode="1")
         till_service.checkout_with_payment(self.conn, ADMIN, [(1, 2)])
@@ -50,11 +49,10 @@ class UiRound3Tests(unittest.TestCase):
     def test_cashier_has_no_dashboard(self):
         self.assertIsNone(self.window(CASHIER).dashboard)
 
-    # ------------------------------------------------------------------ customer + points
     def prepare_customer(self):
         add_product(self.conn, "Phone", price="150.00", cost="100.00", stock=20, barcode="999")
         till_service.checkout_with_payment(self.conn, ADMIN, [(1, 2)], customer_name="Sam",
-                                           customer_phone="0170")                       # 3 points
+                                           customer_phone="0170")                      
 
     def test_lookup_fills_the_name_and_shows_points(self):
         self.prepare_customer()
@@ -104,7 +102,6 @@ class UiRound3Tests(unittest.TestCase):
         open_customer_history(ctx, "0999")
         self.dialogs["showinfo"].assert_called_once()
 
-    # ------------------------------------------------------------------ inventory table
     def test_clicking_headings_sorts_and_filters_narrow_the_table(self):
         add_product(self.conn, "A", stock=5, min_alert=2, category="General")
         add_product(self.conn, "B", stock=1, min_alert=3, category="Grocery")
@@ -126,17 +123,16 @@ class UiRound3Tests(unittest.TestCase):
         self.assertEqual(self.names(tab), ["B"])
         self.dialogs["showerror"].assert_not_called()
 
-    # ------------------------------------------------------------------ reorder
     def test_reorder_dialog(self):
         from pos_erp.ui.dialogs.reorder_dialog import open_reorder
         ctx = self.window().ctx
-        open_reorder(ctx, lambda: None)                                    # nothing low yet
+        open_reorder(ctx, lambda: None)                                  
         self.dialogs["showinfo"].assert_called_once()
         add_product(self.conn, "Tea", cost="3.00", stock=1, min_alert=5)
-        open_reorder(ctx, lambda: None)                                    # low stock but no supplier
+        open_reorder(ctx, lambda: None)                                    
         self.dialogs["showwarning"].assert_called_once()
         purchase_service.add_supplier(self.conn, ADMIN, "Acme")
-        open_reorder(ctx, lambda: None)                                    # now the window opens
+        open_reorder(ctx, lambda: None)                                   
         self.root.update_idletasks()
         self.dialogs["showerror"].assert_not_called()
 

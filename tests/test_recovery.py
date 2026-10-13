@@ -30,7 +30,7 @@ class RecoveryTests(DbTestCase):
         self.assertEqual(rec.normalize_key(" abcd-efgh ijkl_mnpq "), "ABCDEFGHIJKLMNPQ")
 
     def test_reset_sets_the_password_and_rotates_the_key(self):
-        new_key = self.reset(key=self.key.lower(), username="OWNER")       # case and dashes do not matter
+        new_key = self.reset(key=self.key.lower(), username="OWNER")      
         self.assertRegex(new_key, KEY_PATTERN)
         self.assertNotEqual(new_key, self.key)
         session = auth_service.authenticate(self.conn, "owner", "brand-new-pass")
@@ -38,8 +38,8 @@ class RecoveryTests(DbTestCase):
         with self.assertRaises(AuthenticationError):
             auth_service.authenticate(self.conn, "owner", "owner-pass-1")
         with self.assertRaises(AuthenticationError):
-            self.reset()                                                    # the old key is used up
-        self.reset(key=new_key, password="another-new-pass")                # the new key works once
+            self.reset()                                                    
+        self.reset(key=new_key, password="another-new-pass")                
         self.assertGreaterEqual(
             self.scalar("SELECT COUNT(*) FROM audit_logs WHERE action LIKE 'Password reset with a recovery key%'"), 2)
 
@@ -55,7 +55,7 @@ class RecoveryTests(DbTestCase):
         with self.assertRaises(ValidationError):
             self.reset(password="short")
         self.assertEqual(self.scalar("SELECT recovery_attempts FROM users WHERE username = 'owner'"), 0)
-        self.reset()                                                        # the same key still works
+        self.reset()   
 
     def test_wrong_keys_lock_recovery_for_a_while(self):
         now = timeutil.now()
@@ -67,12 +67,12 @@ class RecoveryTests(DbTestCase):
             self.reset(key="AAAA-AAAA-AAAA-AAAA", now=now)
         self.assertIn("locked", str(ctx.exception).lower())
         with self.assertRaises(AuthenticationError) as ctx:
-            self.reset(now=now + timedelta(minutes=1))                      # even the right key is refused
+            self.reset(now=now + timedelta(minutes=1))                 
         self.assertIn("Try again", str(ctx.exception))
         self.reset(now=now + timedelta(minutes=rec.KEY_LOCKOUT_MINUTES + 1))
 
     def test_unknown_disabled_and_keyless_users_get_the_same_message(self):
-        user_service.create_user(self.conn, self.admin, "sara", "Cashier", "temporary-1")    # has no key
+        user_service.create_user(self.conn, self.admin, "sara", "Cashier", "temporary-1")   
         tom_id = user_service.create_user(self.conn, self.admin, "tom", "Cashier", "temporary-2")
         tom_key = rec.issue_key_for_session(self.conn, Session(tom_id, "tom", "Cashier"))
         user_service.set_active(self.conn, self.admin, tom_id, False)
@@ -95,7 +95,7 @@ class RecoveryTests(DbTestCase):
         cashier_id = user_service.create_user(self.conn, self.admin, "sara", "Cashier", "temporary-1")
         sara = Session(cashier_id, "sara", "Cashier")
         self.assertFalse(rec.has_key(self.conn, sara))
-        rec.issue_key_for_session(self.conn, sara)                          # cashiers may create their own key
+        rec.issue_key_for_session(self.conn, sara)                       
         self.assertTrue(rec.has_key(self.conn, sara))
         with self.assertRaises(PermissionDenied):
             rec.issue_key_for_session(self.conn, Session(9, "x", "Nobody"))
@@ -106,7 +106,7 @@ class RecoveryTests(DbTestCase):
         self.assertRegex(new_key, KEY_PATTERN)
         self.assertEqual(auth_service.authenticate(self.conn, "owner", "emergency-pass-9").role, "Admin")
         with self.assertRaises(AuthenticationError):
-            self.reset()                                                    # the old recovery key was replaced
+            self.reset()                                                   
         self.reset(key=new_key)
         self.assertTrue(self.scalar("SELECT COUNT(*) FROM audit_logs WHERE action LIKE '%emergency reset%'"))
 

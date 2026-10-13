@@ -14,7 +14,7 @@ from tests.helpers import ADMIN
 class SeedDemoTests(unittest.TestCase):
     def setUp(self):
         saved = (config.CATEGORIES, config.WAREHOUSES, config.CURRENCY_SYMBOL)
-        self.addCleanup(self._restore, saved)          # the seed publishes settings/lists into config
+        self.addCleanup(self._restore, saved)        
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.path = Path(self.folder.name) / "demo.db"
@@ -31,7 +31,7 @@ class SeedDemoTests(unittest.TestCase):
 
         conn = connect(self.path)
         self.addCleanup(conn.close)
-        self.assertTrue(backup_service.health_check(conn, ADMIN).ok)     # integrity, links, stock == ledger
+        self.assertTrue(backup_service.health_check(conn, ADMIN).ok)    
 
         admin = auth_service.authenticate(conn, "admin", seed_demo.ADMIN_PASSWORD)
         cashier = auth_service.authenticate(conn, "cashier", seed_demo.CASHIER_PASSWORD)
@@ -51,7 +51,7 @@ class SeedDemoTests(unittest.TestCase):
     def test_reset_rebuilds_and_existing_files_are_protected(self):
         first = seed_demo.seed(self.path)
         with self.assertRaises(seed_demo.SeedError):
-            seed_demo.seed(self.path)                                    # exists and no reset
+            seed_demo.seed(self.path)                                
         again = seed_demo.seed(self.path, reset=True)
         self.assertEqual(again["products"], first["products"])
 
@@ -59,7 +59,7 @@ class SeedDemoTests(unittest.TestCase):
         self.path.write_text("precious")
         with self.assertRaises(seed_demo.SeedError):
             seed_demo.seed(self.path)
-        with mock.patch.object(seed_demo, "REAL_DB", self.path):         # pretend this file is the real DB
+        with mock.patch.object(seed_demo, "REAL_DB", self.path):      
             with self.assertRaises(seed_demo.SeedError):
                 seed_demo.seed(self.path, reset=True)
         self.assertEqual(self.path.read_text(), "precious")

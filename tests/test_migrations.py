@@ -34,7 +34,7 @@ def build_legacy_db(path):
         "INSERT INTO inventory (name, category, buying_price, price, stock, min_alert, batch, barcode, warehouse, expiry)"
         " VALUES (?,?,?,?,?,?,?,?,?,?)",
         [("Wireless Mouse", "Electronics", 8.0, 15.0, 25, 5, "BT-01", "111", "Central Warehouse", "2030-01"),
-         ("Keyboard", "Electronics", 35.0, 55.5, 12, 3, "KB-99", "", "Central Warehouse", ""),     # blank barcode
+         ("Keyboard", "Electronics", 35.0, 55.5, 12, 3, "KB-99", "", "Central Warehouse", ""),    
          ("Cable", "Electronics", 2.5, 6.0, 50, 10, "CB-05", "222", "", ""),
          ("Gone", "General", 1.0, 2.0, 0, 0, "", None, "", "")])
     raw.execute("INSERT INTO users (username, password, role) VALUES ('admin', ?, 'Admin')",
@@ -43,27 +43,24 @@ def build_legacy_db(path):
                 (legacy_sha256("hunter2hunter2")[len("sha256$"):],))
     raw.execute("INSERT INTO suppliers (name, phone) VALUES ('Acme', '555')")
     raw.execute("INSERT INTO customers (name, phone, loyalty_points, total_spent) VALUES ('Sam', '0170', 1, 120.5)")
-    # Original-style multi-line invoice: whole invoice discount/tax/total repeated on every line.
-    # subtotal 15*2 + 55.5 = 85.5, discount 5.5, tax 8.0 -> total 88.0
+
     for pid, qty, sub in ((1, 2, 30.0), (2, 1, 55.5)):
         raw.execute("INSERT INTO sales (invoice_no, customer_name, customer_phone, product_id, quantity, subtotal,"
                     " discount, tax, total_price, payment_method, cashier_name, sale_date)"
                     " VALUES ('INV-A','Sam','0170',?,?,?,5.5,8.0,88.0,'Cash','admin','2026-01-01 10:00:00')",
                     (pid, qty, sub))
-    # Revised-style invoice: per-line shares (two equal lines -> identical values on both rows!)
     for pid in (1, 3):
         raw.execute("INSERT INTO sales (invoice_no, customer_name, customer_phone, product_id, quantity, subtotal,"
                     " discount, tax, total_price, payment_method, cashier_name, sale_date)"
                     " VALUES ('INV-B','Walk-in Customer','N/A',?,1,10.0,1.0,0.9,9.9,'Card','cashier','2026-01-02 11:00:00')",
                     (pid,))
-    # Sale of a product that was later hard-deleted (id 99)
     raw.execute("INSERT INTO sales (invoice_no, customer_name, customer_phone, product_id, quantity, subtotal,"
                 " discount, tax, total_price, payment_method, cashier_name, sale_date)"
                 " VALUES ('INV-C','Walk-in Customer','N/A',99,1,4.0,0,0,4.0,'Cash','admin','2026-01-03 09:00:00')")
     raw.execute("INSERT INTO sales_returns (invoice_no, product_id, quantity, refund_amount, reason, return_date)"
-                " VALUES ('INV-A', 1, 1, NULL, '', '2026-01-04 10:00:00')")      # amount never saved by old app
+                " VALUES ('INV-A', 1, 1, NULL, '', '2026-01-04 10:00:00')")      
     raw.execute("INSERT INTO sales_returns (invoice_no, product_id, quantity, refund_amount, reason, return_date)"
-                " VALUES ('INV-NOPE', 1, 1, 1.0, '', '2026-01-04 10:00:00')")    # orphan -> skipped
+                " VALUES ('INV-NOPE', 1, 1, 1.0, '', '2026-01-04 10:00:00')")   
     raw.execute("INSERT INTO audit_logs (username, action, timestamp) VALUES ('admin','User logged in','2026-01-01 09:00:00')")
     raw.commit()
     raw.close()
@@ -107,14 +104,14 @@ class LegacyUpgradeTests(unittest.TestCase):
     def test_backup_file_created_and_version_set(self):
         self.assertEqual(current_version(self.conn), SCHEMA_VERSION)
         self.assertTrue([f for f in os.listdir(self.dir.name) if ".pre-migration-" in f])
-        self.assertFalse(ensure_schema(self.conn))  # idempotent
+        self.assertFalse(ensure_schema(self.conn)) 
 
     def test_products_converted_with_ids_preserved(self):
         rows = {r["id"]: r for r in self.q("SELECT * FROM products")}
         self.assertEqual(rows[1]["price_cents"], 1500)
         self.assertEqual(rows[2]["price_cents"], 5550)
         self.assertEqual(rows[2]["cost_cents"], 3500)
-        self.assertIsNone(rows[2]["barcode"])      # the legacy '' barcode became NULL (many NULLs are allowed)
+        self.assertIsNone(rows[2]["barcode"])      
         self.assertIsNone(rows[4]["barcode"])
         self.assertEqual(rows[1]["barcode"], "111")
 
@@ -127,7 +124,7 @@ class LegacyUpgradeTests(unittest.TestCase):
         users = {r["username"]: r for r in self.q("SELECT * FROM users")}
         self.assertEqual(users["admin"]["must_change_password"], 1)
         self.assertEqual(users["boss"]["must_change_password"], 0)
-        session = auth_service.authenticate(self.conn, "boss", "hunter2hunter2")   # legacy hash still works
+        session = auth_service.authenticate(self.conn, "boss", "hunter2hunter2")  
         self.assertEqual(session.role, "Admin")
         self.assertTrue(self.q("SELECT password_hash FROM users WHERE username='boss'")[0][0].startswith("scrypt$"))
 
@@ -140,7 +137,7 @@ class LegacyUpgradeTests(unittest.TestCase):
 
     def test_revised_style_invoice_with_equal_lines_is_summed(self):
         inv = self.q("SELECT * FROM invoices WHERE invoice_no = 'INV-B'")[0]
-        self.assertEqual(inv["total_cents"], 1980)       # 2 x 9.90, NOT 9.90
+        self.assertEqual(inv["total_cents"], 1980)     
         self.assertEqual(inv["payment_method"], "Card")
 
     def test_deleted_product_history_is_kept(self):
@@ -151,7 +148,7 @@ class LegacyUpgradeTests(unittest.TestCase):
     def test_returns_migrated_and_orphans_skipped(self):
         rows = self.q("SELECT * FROM sales_returns")
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["refund_cents"], 1544)  # half of line total 30.00 - 1.93 discount + 2.81 tax = 30.88
+        self.assertEqual(rows[0]["refund_cents"], 1544)  
         self.assertEqual(self.q("SELECT COUNT(*) FROM invoice_items WHERE id = ?", rows[0]["invoice_item_id"])[0][0], 1)
 
     def test_other_tables_and_cleanup(self):

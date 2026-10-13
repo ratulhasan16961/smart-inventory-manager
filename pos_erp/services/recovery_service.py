@@ -12,9 +12,9 @@ from ..permissions import Session
 from ..security import hash_password, verify_password
 from . import audit, auth_service
 
-KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"   # no 0/O/1/I: a handwritten key is easy to read back
+KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"   
 KEY_GROUPS = 4
-GROUP_LENGTH = 4                                    # 16 characters x 5 bits = 80 bits
+GROUP_LENGTH = 4                                    
 MAX_KEY_ATTEMPTS = 5
 KEY_LOCKOUT_MINUTES = 15
 INVALID = "Username or recovery key is not valid."
@@ -69,7 +69,7 @@ def reset_password_with_key(conn: sqlite3.Connection, username: str, key: str, n
         if row is None or not row["is_active"] or not row["recovery_hash"]:
             if _dummy_hash is None:
                 _dummy_hash = hash_password("dummy-recovery")
-            verify_password(normalize_key(key), _dummy_hash)         # similar timing for every outcome
+            verify_password(normalize_key(key), _dummy_hash)       
             audit.log(conn, username or "?", "Failed password recovery (unknown user, disabled, or no recovery key)")
             error = AuthenticationError(INVALID)
         elif row["recovery_locked_until"] and now < timeutil.parse(row["recovery_locked_until"]):
@@ -90,13 +90,12 @@ def reset_password_with_key(conn: sqlite3.Connection, username: str, key: str, n
                       "Failed password recovery (wrong key)" + (" - recovery locked" if locked_until else ""))
             error = AuthenticationError(message)
         else:
-            # A weak new password raises here and rolls everything back, so the key is not used up.
             auth_service.validate_password(new_password, row["username"])
             new_key = _issue(conn, row["id"])
             conn.execute("UPDATE users SET password_hash = ?, must_change_password = 0, failed_attempts = 0, "
                          "locked_until = NULL WHERE id = ?", (hash_password(new_password), row["id"]))
             audit.log(conn, row["username"], "Password reset with a recovery key (a new key was issued)")
-    if error:                      # raised AFTER the commit so failed-attempt counters persist
+    if error:                      
         raise error
     return new_key
 

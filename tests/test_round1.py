@@ -36,7 +36,7 @@ class UpgradeTests(unittest.TestCase):
         expiry = {r["name"]: r["expiry"] for r in conn.execute("SELECT name, expiry FROM products")}
         self.assertEqual(expiry, {"Tea": "2027-05", "Mouse": "2028-12"})
         categories = [r[0] for r in conn.execute("SELECT name FROM categories ORDER BY id")]
-        self.assertEqual(categories[:4], ["Electronics", "Grocery", "Clothing", "General"])  # defaults first
+        self.assertEqual(categories[:4], ["Electronics", "Grocery", "Clothing", "General"])  
         self.assertIn("Snacks", categories)
         self.assertIn("Annex", [r[0] for r in conn.execute("SELECT name FROM warehouses")])
 
@@ -89,7 +89,7 @@ class ListsTests(DbTestCase):
 
     def test_add_rules(self):
         lists_service.add(self.conn, ADMIN, "categories", "Toys")
-        self.assertIn("Toys", config.CATEGORIES)            # published to the product form immediately
+        self.assertIn("Toys", config.CATEGORIES)           
         with self.assertRaises(ConflictError):
             lists_service.add(self.conn, ADMIN, "categories", "toys")
         with self.assertRaises(ValidationError):
@@ -114,14 +114,14 @@ class ListsTests(DbTestCase):
     def test_remove_rules(self):
         add_product(self.conn, "Apple", category="Grocery")
         with self.assertRaises(ValidationError):
-            lists_service.remove(self.conn, ADMIN, "categories", "Grocery")       # still in use
+            lists_service.remove(self.conn, ADMIN, "categories", "Grocery")     
         lists_service.remove(self.conn, ADMIN, "categories", "Clothing")
         self.assertNotIn("Clothing", lists_service.names(self.conn, "categories"))
         with self.assertRaises(ValidationError):
             lists_service.remove(self.conn, ADMIN, "categories", "General")
         lists_service.remove(self.conn, ADMIN, "warehouses", "Branch Warehouse")
         with self.assertRaises(ValidationError):
-            lists_service.remove(self.conn, ADMIN, "warehouses", "Central Warehouse")  # the last one must stay
+            lists_service.remove(self.conn, ADMIN, "warehouses", "Central Warehouse") 
 
     def test_apply_registers_values_that_products_already_use(self):
         add_product(self.conn, "Lego", category="Toys", warehouse="Annex")
@@ -162,7 +162,7 @@ class UserTests(DbTestCase):
     def test_create_user_with_temporary_password(self):
         admin = self.first_admin()
         user_service.create_user(self.conn, admin, "Sara", "Cashier", "temporary-1")
-        session = auth_service.authenticate(self.conn, "sara", "temporary-1")     # usernames ignore case
+        session = auth_service.authenticate(self.conn, "sara", "temporary-1")    
         self.assertEqual((session.role, session.must_change_password), ("Cashier", True))
         with self.assertRaises(ConflictError):
             user_service.create_user(self.conn, admin, "SARA", "Cashier", "temporary-2")
@@ -182,12 +182,12 @@ class UserTests(DbTestCase):
         user_service.set_active(self.conn, a, cashier_id, True)
         self.assertEqual(auth_service.authenticate(self.conn, "sara", "temporary-1").username, "sara")
         with self.assertRaises(ValidationError):
-            user_service.set_active(self.conn, a, a.user_id, False)               # not your own account
+            user_service.set_active(self.conn, a, a.user_id, False)              
         b_id = user_service.create_user(self.conn, a, "second", "Admin", "temporary-2")
         b = Session(b_id, "second", "Admin")
-        user_service.set_active(self.conn, b, a.user_id, False)                   # fine: b stays active
+        user_service.set_active(self.conn, b, a.user_id, False)                 
         with self.assertRaises(ValidationError) as ctx:
-            user_service.set_active(self.conn, a, b_id, False)                    # b is now the last admin
+            user_service.set_active(self.conn, a, b_id, False)                   
         self.assertIn("administrator", str(ctx.exception))
 
     def test_set_role(self):
@@ -196,11 +196,11 @@ class UserTests(DbTestCase):
         user_service.set_role(self.conn, a, cid, "Admin")
         self.assertEqual(self.scalar("SELECT role FROM users WHERE id = ?", cid), "Admin")
         with self.assertRaises(ValidationError):
-            user_service.set_role(self.conn, a, a.user_id, "Cashier")             # not your own role
+            user_service.set_role(self.conn, a, a.user_id, "Cashier")           
         sara = Session(cid, "sara", "Admin")
-        user_service.set_role(self.conn, sara, a.user_id, "Cashier")              # sara stays admin
+        user_service.set_role(self.conn, sara, a.user_id, "Cashier")           
         with self.assertRaises(ValidationError):
-            user_service.set_role(self.conn, a, cid, "Cashier")                   # sara is now the last admin
+            user_service.set_role(self.conn, a, cid, "Cashier")                  
 
     def test_reset_password_unlocks_and_forces_a_change(self):
         a = self.first_admin()
@@ -244,7 +244,7 @@ class BackupRestoreTests(unittest.TestCase):
         self.assertEqual([r[0] for r in copy.execute("SELECT name FROM products ORDER BY id")], ["Before", "After"])
         copy.close()
         self.assertTrue(backup_service.health_check(self.conn, ADMIN).ok)
-        add_product(self.conn, "Again")                         # the connection is still fully usable
+        add_product(self.conn, "Again")                         
         self.assertEqual(self.names(), ["Before", "Again"])
 
     def test_old_format_backup_is_upgraded_on_restore(self):
@@ -285,7 +285,7 @@ class BackupRestoreTests(unittest.TestCase):
     def test_health_check_flags_a_stock_mismatch(self):
         pid = add_product(self.conn, "Tea", stock=5)
         self.assertTrue(backup_service.health_check(self.conn, ADMIN).ok)
-        self.conn.execute("UPDATE products SET stock = 99 WHERE id = ?", (pid,))      # bypass the ledger
+        self.conn.execute("UPDATE products SET stock = 99 WHERE id = ?", (pid,))     
         report = backup_service.health_check(self.conn, ADMIN)
         self.assertFalse(report.ok)
         self.assertEqual(report.ledger_problems, 1)

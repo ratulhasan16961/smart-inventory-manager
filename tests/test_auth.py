@@ -23,7 +23,7 @@ class AuthTests(DbTestCase):
         self.assertTrue(session.must_change_password)
         session = auth.change_password(self.conn, session, "correct-horse")
         self.assertFalse(session.must_change_password)
-        auth.ensure_default_users(self.conn)               # "app restart"
+        auth.ensure_default_users(self.conn)             
         self.assertFalse(auth.authenticate(self.conn, "admin", "correct-horse").must_change_password)
         with self.assertRaises(AuthenticationError):
             auth.authenticate(self.conn, "admin", "1234")  # old default no longer works
@@ -40,7 +40,7 @@ class AuthTests(DbTestCase):
         for _ in range(5):
             with self.assertRaises(AuthenticationError):
                 auth.authenticate(self.conn, "admin", "bad", now=start)
-        with self.assertRaises(AuthenticationError) as ctx:  # even the right password is refused while locked
+        with self.assertRaises(AuthenticationError) as ctx:  
             auth.authenticate(self.conn, "admin", "1234", now=start + timedelta(minutes=1))
         self.assertIn("locked", str(ctx.exception).lower())
         later = start + timedelta(minutes=6)

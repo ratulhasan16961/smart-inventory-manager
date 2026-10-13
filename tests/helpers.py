@@ -30,7 +30,6 @@ def add_product(conn, name="Widget", price="10.00", cost="6.00", stock=10, min_a
 class DbTestCase(unittest.TestCase):
     def setUp(self):
         self.conn = make_conn()
-        # settings/lists publish values into config at runtime; put them back after each test
         self.addCleanup(self._restore_config, (config.CATEGORIES, config.WAREHOUSES, config.CURRENCY_SYMBOL))
 
     @staticmethod

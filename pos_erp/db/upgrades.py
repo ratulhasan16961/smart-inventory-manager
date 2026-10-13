@@ -32,7 +32,6 @@ def _upgrade_v2(conn: sqlite3.Connection) -> None:
                                     ("warehouses", "warehouse", DEFAULT_WAREHOUSES)):
         conn.execute(_LIST_TABLE.format(table=table))
         conn.executemany(f"INSERT OR IGNORE INTO {table} (name) VALUES (?)", [(name,) for name in defaults])
-        # keep every value the existing products already use
         conn.execute(f"INSERT OR IGNORE INTO {table} (name) SELECT DISTINCT trim({column}) FROM products "
                      f"WHERE trim({column}) <> ''")
     conn.execute("UPDATE products SET expiry = substr(expiry, 1, 5) || '0' || substr(expiry, 6) "
@@ -48,7 +47,7 @@ def _upgrade_v3(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE invoices ADD COLUMN voided_at TEXT")
     conn.execute("ALTER TABLE invoices ADD COLUMN voided_by TEXT")
     conn.execute("ALTER TABLE invoices ADD COLUMN void_reason TEXT NOT NULL DEFAULT ''")
-    conn.execute("UPDATE invoices SET tendered_cents = total_cents")  # older invoices: assume exact payment
+    conn.execute("UPDATE invoices SET tendered_cents = total_cents")  
     conn.execute("CREATE INDEX idx_invoices_status ON invoices (status)")
 
 

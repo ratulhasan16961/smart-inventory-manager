@@ -4,8 +4,8 @@ from unittest import mock
 
 try:
     import tkinter as tk
-    import tkinter.messagebox  # noqa: F401
-except ImportError:  # pragma: no cover
+    import tkinter.messagebox 
+except ImportError: 
     tk = None
 
 from tests.helpers import ADMIN, CASHIER, add_product, make_conn
@@ -36,7 +36,7 @@ class UiRound2Tests(unittest.TestCase):
 
     def fill_cart(self, pos):
         pos.prod_id_e.insert(0, "111")
-        pos.prod_qty_e.insert(0, "2")        # 2 x 15.00 = 30.00
+        pos.prod_qty_e.insert(0, "2")        
         pos.add_to_cart()
 
     def paid(self):
@@ -90,7 +90,7 @@ class UiRound2Tests(unittest.TestCase):
         sales_dialogs.open_invoices(ctx)
         self.dialogs["showerror"].assert_not_called()
         report_dialogs.open_reports(ctx)
-        self.dialogs["showerror"].assert_called_once()      # "Access Denied"
+        self.dialogs["showerror"].assert_called_once()    
 
 
 if __name__ == "__main__":

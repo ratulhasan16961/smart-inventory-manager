@@ -60,7 +60,6 @@ def list_backups(folder: str | Path) -> list[Path]:
     return sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
 
 
-# --------------------------------------------------------------------------- health
 @dataclass(frozen=True)
 class HealthReport:
     integrity: str
@@ -81,7 +80,6 @@ def health_check(conn: sqlite3.Connection, session: Session) -> HealthReport:
     return HealthReport(integrity, foreign, len(stock_service.reconcile(conn, session)))
 
 
-# --------------------------------------------------------------------------- restore
 def inspect_backup(path: str | Path) -> None:
     """Raise ValidationError unless the file is a healthy POS database this version can read."""
     path = Path(path)

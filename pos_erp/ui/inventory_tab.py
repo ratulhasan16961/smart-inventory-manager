@@ -38,7 +38,6 @@ class InventoryTab:
         self._build_search(parent)
         self._build_table(parent)
 
-    # ------------------------------------------------------------------ layout
     def _build_form(self, parent) -> None:
         frame = tk.LabelFrame(parent, text=" Product Entry Form ", bg=WHITE, fg="#212529",
                               font=(FONT, 10, "bold"), bd=1, relief="solid")
@@ -62,7 +61,7 @@ class InventoryTab:
         self.clear_form()
 
         ctx = self.ctx
-        specs = (  # (text, handler, colour, permission, text colour)
+        specs = ( 
             ("➕ Add Product", self.add_product, "#198754", "inventory.manage", "#ffffff"),
             ("📊 Analytics", lambda: open_analytics(ctx), "#fd7e14", "analytics.view", "#ffffff"),
             ("🗑 Delete Product", self.delete_selected, "#dc3545", "inventory.manage", "#ffffff"),
@@ -124,7 +123,6 @@ class InventoryTab:
         for column in COLUMNS:
             self.tree.heading(column, text=column, command=lambda c=column: self.sort_by(c))
 
-    # ------------------------------------------------------------------ table
     @handle_errors
     def refresh_table(self) -> None:
         rows = inventory_service.list_products(self.ctx.conn, self.ctx.session, self.search_entry.get())
@@ -175,7 +173,6 @@ class InventoryTab:
                             for a in alerts)
             messagebox.showwarning("Low Stock Notice", "Warning! Below items are running low on stock:\n\n" + lines)
 
-    # ------------------------------------------------------------------ form
     def clear_form(self) -> None:
         for label, widget in self.fields.items():
             if isinstance(widget, ttk.Combobox):
@@ -192,7 +189,6 @@ class InventoryTab:
                            batch=get("Batch No"), barcode=get("Barcode"), warehouse=get("Warehouse"),
                            expiry=get("Expiry (YYYY-MM)"))
 
-    # ------------------------------------------------------------------ actions
     @handle_errors
     def add_product(self) -> None:
         inventory_service.add_product(self.ctx.conn, self.ctx.session, self._read_form())

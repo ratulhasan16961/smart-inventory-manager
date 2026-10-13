@@ -44,7 +44,6 @@ def _form_dialog(parent, title, fields, submit_text, on_submit, choices=None, in
     return win
 
 
-# --------------------------------------------------------------------------- shop settings
 @handle_errors
 def open_shop_settings(ctx: AppContext) -> None:
     current = settings_service.get_all(ctx.conn)
@@ -60,10 +59,9 @@ def open_shop_settings(ctx: AppContext) -> None:
     _form_dialog(ctx.root, "Shop Settings", fields, "Save settings", save, initial=current)
 
 
-# --------------------------------------------------------------------------- users
 @handle_errors
 def open_user_management(ctx: AppContext) -> None:
-    user_service.list_users(ctx.conn, ctx.session)  # fails early with a clear message if not allowed
+    user_service.list_users(ctx.conn, ctx.session)  
     win = tk.Toplevel(ctx.root)
     win.title("User Management")
     win.geometry("860x520")
@@ -144,7 +142,6 @@ def open_user_management(ctx: AppContext) -> None:
     load()
 
 
-# --------------------------------------------------------------------------- backup & restore
 @handle_errors
 def open_backup_restore(ctx: AppContext) -> None:
     ctx.session.require("system.restore")
@@ -228,7 +225,6 @@ def open_backup_restore(ctx: AppContext) -> None:
     load()
 
 
-# --------------------------------------------------------------------------- managed lists
 @handle_errors
 def open_manage_lists(ctx: AppContext) -> None:
     ctx.session.require("lists.manage")

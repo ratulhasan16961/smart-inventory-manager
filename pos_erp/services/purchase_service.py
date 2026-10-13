@@ -49,7 +49,7 @@ def deactivate_supplier(conn: sqlite3.Connection, session: Session, supplier_id:
 class POLine:
     product_id: int
     quantity: int
-    unit_cost: str  # decimal text, e.g. "8.50"
+    unit_cost: str 
 
 
 def _next_po_number(conn: sqlite3.Connection, moment) -> str:
@@ -173,8 +173,6 @@ def cancel_purchase_order(conn: sqlite3.Connection, session: Session, po_id: int
         audit.log(conn, session.username, f"Cancelled purchase order {po['po_number']}")
 
 
-
-# --------------------------------------------------------------------------- reorder suggestions
 @dataclass(frozen=True)
 class ReorderSuggestion:
     product_id: int
@@ -183,7 +181,7 @@ class ReorderSuggestion:
     min_alert: int
     on_order: int
     quantity: int
-    unit_cost: str            # decimal text, ready for POLine
+    unit_cost: str           
     supplier_id: int | None
     supplier_name: str
 

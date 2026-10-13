@@ -9,8 +9,8 @@ from ..errors import ConflictError, NotFoundError, ValidationError
 from ..permissions import Session
 from . import audit
 
-KINDS = {"categories": "category", "warehouses": "warehouse"}  # list table -> products column
-PROTECTED = {"categories": "General"}                         # the default category is used by the code itself
+KINDS = {"categories": "category", "warehouses": "warehouse"}  
+PROTECTED = {"categories": "General"}                         
 DEFAULTS = {"categories": ("General",), "warehouses": ("Central Warehouse",)}
 
 

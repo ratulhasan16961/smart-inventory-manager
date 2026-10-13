@@ -33,7 +33,6 @@ CASHIER_PASSWORD = "demo-cashier-pass"
 TAX_RATE = "5"
 HISTORY_DAYS = 30
 
-# (name, category, cost, price, stock, min alert, warehouse, expiry: months from now, or None)
 PRODUCTS = (
     ("Wireless Mouse", "Electronics", "8.00", "15.00", 60, 8, "Central Warehouse", None),
     ("Mechanical Keyboard", "Electronics", "35.00", "55.00", 40, 6, "Central Warehouse", None),
@@ -134,7 +133,7 @@ class _Demo:
         for product_name, qty in plan["lines"]:
             row = self.conn.execute("SELECT stock, min_alert FROM products WHERE id = ?",
                                     (self.ids[product_name],)).fetchone()
-            room = row["stock"] - row["min_alert"] - 1       # never sell a product down to its alert level
+            room = row["stock"] - row["min_alert"] - 1       
             if room >= 1:
                 items.append((self.ids[product_name], min(qty, room)))
         if not items:
@@ -153,11 +152,11 @@ class _Demo:
                         self.conn, self.cashier, items, discount=discount, tax_rate=TAX_RATE,
                         payment_method="Card", customer_name=name, customer_phone=phone, redeem_points=1)
                 except ValidationError:
-                    invoice = None                            # the sale is rolled back completely; sell normally
+                    invoice = None                          
         if invoice is None:
             method = plan["payment"]
             tendered = None
-            if method == config.PAYMENT_METHODS[0]:           # cash: the customer pays with round notes
+            if method == config.PAYMENT_METHODS[0]:          
                 total = sales_service.quote(self.conn, items, discount, TAX_RATE).total_cents
                 tendered = plain(((total + 499) // 500) * 500)
             invoice = till_service.checkout_with_payment(
@@ -186,7 +185,7 @@ def _build(conn, rng: random.Random, real_now: datetime) -> None:
             today - timedelta(days=HISTORY_DAYS), time(8, 30))):
         admin = user_service.create_first_admin(conn, "admin", ADMIN_PASSWORD)
         user_service.create_user(conn, admin, "cashier", config.ROLE_CASHIER, CASHIER_PASSWORD)
-        conn.execute("UPDATE users SET must_change_password = 0")      # demo accounts: log in straight away
+        conn.execute("UPDATE users SET must_change_password = 0")      
         settings_service.update(conn, admin, {
             "shop_name": "Demo Mart", "currency_symbol": "$", "default_tax_rate": TAX_RATE,
             "receipt_footer": "Thanks for visiting Demo Mart!"})
@@ -202,8 +201,8 @@ def _build(conn, rng: random.Random, real_now: datetime) -> None:
         (at(18, 11), partial(demo.receive, "po1", 1.0)),
         (at(6, 10), partial(demo.order, "po2", "Fresh Foods Co",
                             [("Organic Green Tea", 40, "2.80"), ("Dark Chocolate Bar", 100, "1.10")])),
-        (at(4, 11), partial(demo.receive, "po2", 0.5)),                  # half of it arrived
-        (at(1, 15), partial(demo.order, "po3", "Style Textiles", [("Wool Socks", 40, "1.20")])),   # still open
+        (at(4, 11), partial(demo.receive, "po2", 0.5)),                
+        (at(1, 15), partial(demo.order, "po3", "Style Textiles", [("Wool Socks", 40, "1.20")])),   
     ]
     for plan in _plan_sales(rng, today):
         if plan["when"] <= real_now:
