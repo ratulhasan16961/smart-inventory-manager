@@ -61,7 +61,15 @@ def _upgrade_v4(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_invoices_phone ON invoices (customer_phone)")
 
 
-UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4}
+def _upgrade_v5(conn: sqlite3.Connection) -> None:
+    """Password recovery keys: one per user, stored hashed, with their own wrong-attempt counter."""
+    conn.execute("ALTER TABLE users ADD COLUMN recovery_hash TEXT")
+    conn.execute("ALTER TABLE users ADD COLUMN recovery_attempts INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE users ADD COLUMN recovery_locked_until TEXT")
+
+
+UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {
+    2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5}
 LATEST_VERSION = max(UPGRADES)
 
 

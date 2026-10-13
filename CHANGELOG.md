@@ -1,21 +1,29 @@
-## 2.1.0
+# Changelog
+
+## 2.4.0
 
 ### Added
-- User management (create users with a temporary password, disable/enable, change role, reset password).
-  The last active administrator can never be disabled or demoted.
-- First-run setup: a brand-new database asks for the administrator username and password
-  (no default `admin/1234` account is created any more; existing databases keep their users).
-- Shop settings (shop name, currency symbol, default tax, receipt footer), stored in the database.
-- Backup restore with validation, an automatic safety copy and a database health check.
-- Managed Category / Warehouse lists; renaming an entry also updates the products that use it.
-- `db/upgrades.py`: numbered upgrades tracked in `schema_migrations`, with a file backup before each upgrade.
+- "Forgot password?" on the login screen: username + one-time recovery key + new password. The used key is
+  replaced by a new one. Wrong keys are limited (5 attempts, then a 15 minute lock) and the screen never reveals
+  whether a username exists.
+- Recovery key shown once at first-run setup; Settings > Recovery Key creates or replaces it later.
+- `python3 -m scripts.reset_password --user NAME`: emergency reset for a locked-out user, run on the computer
+  that holds the database.
+- Database upgrade v5: hashed recovery key and attempt counter per user.
 
 ### Changed
-- Expiry dates are stored as `YYYY-MM` (`2027-5` becomes `2027-05`); existing rows are fixed by the upgrade.
-- Receipts and the Discount label use the configured shop name, footer and currency.
-- Category and Warehouse dropdowns are read-only (add names under Settings > Categories & Warehouses).
-- The Warehouse dropdown is wider.
-# Changelog
+- First-run setup now shows the recovery key before the app opens.
+- The login window resizes for each screen.
+
+## 2.3.1
+
+### Added
+- MIT license and a rewritten README (screenshots, feature overview, quick start, roles, limitations).
+- `scripts/seed_demo.py`: builds a separate demo database (30 days of sales, purchase orders, returns, a void)
+  through the real services. It refuses to write to the real database.
+
+### Changed
+- Architecture document refreshed (permissions, data model, design decisions, QA checklist).
 
 ## 2.3.0
 
@@ -50,6 +58,24 @@
 ### Changed
 - Returns are refused on voided invoices.
 - Cashiers can open the Invoices window; only Admins can void and open Reports.
+
+## 2.1.0
+
+### Added
+- User management (create users with a temporary password, disable/enable, change role, reset password).
+  The last active administrator can never be disabled or demoted.
+- First-run setup: a brand-new database asks for the administrator username and password
+  (no default `admin/1234` account is created any more; existing databases keep their users).
+- Shop settings (shop name, currency symbol, default tax, receipt footer), stored in the database.
+- Backup restore with validation, an automatic safety copy and a database health check.
+- Managed Category / Warehouse lists; renaming an entry also updates the products that use it.
+- `db/upgrades.py`: numbered upgrades tracked in `schema_migrations`, with a file backup before each upgrade.
+
+### Changed
+- Expiry dates are stored as `YYYY-MM` (`2027-5` becomes `2027-05`); existing rows are fixed by the upgrade.
+- Receipts and the Discount label use the configured shop name, footer and currency.
+- Category and Warehouse dropdowns are read-only (add names under Settings > Categories & Warehouses).
+- The Warehouse dropdown is wider.
 
 ## 2.0.0
 

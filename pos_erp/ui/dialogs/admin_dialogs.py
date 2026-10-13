@@ -11,7 +11,7 @@ from ..context import AppContext
 from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, fill_tree,
                        handle_errors, make_tree)
 from .system_dialogs import open_backup_restore, open_manage_lists, open_shop_settings, open_user_management
-
+from .recovery_dialogs import open_recovery_key
 try:
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
     from matplotlib.figure import Figure
@@ -80,7 +80,7 @@ def open_customers(ctx: AppContext) -> None:
 def open_settings(ctx: AppContext) -> None:
     win = tk.Toplevel(ctx.root)
     win.title("Settings & Maintenance")
-    win.geometry("380x680")
+    win.geometry("380x730")
     win.config(bg=WHITE)
     tk.Label(win, text="Update Security Settings", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack(pady=8)
     tk.Label(win, text="Username:", **LABEL_STYLE).pack()
@@ -112,6 +112,7 @@ def open_settings(ctx: AppContext) -> None:
     customers_button = CanvasButton(win, "👥 Customer Base", lambda: open_customers(ctx), "#6f42c1", width=190, height=30)
     customers_button.pack(pady=4)
     customers_button.set_enabled(ctx.can("customers.view"))
+    CanvasButton(win, "🔑 Recovery Key", lambda: open_recovery_key(ctx), "#d63384", width=190, height=30).pack(pady=4)
 
     tk.Frame(win, height=1, bg="#cccccc").pack(fill="x", padx=15, pady=8)
     tk.Label(win, text="Administration", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack()

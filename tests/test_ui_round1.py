@@ -58,6 +58,8 @@ class UiRound1Tests(unittest.TestCase):
         view.pass_entry.insert(0, "owner-pass-1")
         view.confirm_entry.insert(0, "owner-pass-1")
         view.create_admin()
+        self.assertEqual(sessions, [])                                # the recovery key screen comes first
+        view.continue_after_key()
         self.assertEqual([s.username for s in sessions], ["owner"])
         self.assertFalse(user_service.needs_setup(self.conn))
 
