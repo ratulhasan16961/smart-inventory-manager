@@ -1,6 +1,6 @@
 [project]
 name = "pos-erp"
-version = "2.3.1"
+version = "2.5.0"
 description = "Enterprise POS & ERP System (Tkinter + SQLite)"
 readme = "README.md"
 license = { text = "MIT" }
@@ -13,3 +13,7 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W"]
 ignore = ["E501", "E741"]  # long SQL strings; short loop names like `l` are used deliberately
+
+[tool.ruff.lint.per-file-ignores]
+# `import tkinter.messagebox` looks unused but must happen before the dialogs are patched by name.
+"tests/test_ui_*.py" = ["F401"]

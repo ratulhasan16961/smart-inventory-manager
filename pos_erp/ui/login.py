@@ -1,16 +1,19 @@
-"""Login screen: first-run setup, normal login, forgot password (recovery key) and the forced password change."""
+"""Login screen: first-run setup, login, forgot password (email code or recovery key), forced password change."""
 from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox
 
-from .. import config
+from .. import config, mailer
 from ..errors import AuthenticationError, POSError
-from ..services import auth_service, recovery_service, user_service
+from ..services import auth_service, email_service, recovery_service, user_service
 from .widgets import BG, DARK, FONT, CanvasButton, create_styled_entry
 
 LINK_COLOR = "#0d6efd"
-SIZES = {"login": "380x470", "setup": "380x520", "change": "380x520", "forgot": "380x760", "key": "380x600"}
+MUTED = "#6c757d"
+GOOD = "#198754"
+SIZES = {"login": "380x470", "setup": "380x520", "change": "380x520", "choice": "380x430",
+         "forgot": "380x760", "email": "380x740", "key": "380x600"}
 FORGOT_HELP = ("No recovery key? A cashier can ask an administrator (Settings > Manage Users > Reset Password). "
                "An administrator can run this on the computer that holds the database:\n"
                "python3 -m scripts.reset_password --user NAME")
@@ -41,9 +44,10 @@ class LoginView:
         container.pack(pady=5)
         return entry
 
-    def _note(self, text: str, size: int = 9) -> None:
-        tk.Label(self.frame, text=text, bg=BG, fg=DARK, font=(FONT, size), wraplength=340,
-                 justify="center").pack(padx=10, pady=2)
+    def _note(self, text: str, size: int = 9, color: str = DARK) -> tk.Label:
+        label = tk.Label(self.frame, text=text, bg=BG, fg=color, font=(FONT, size), wraplength=340, justify="center")
+        label.pack(padx=10, pady=2)
+        return label
 
     def _link(self, text: str, command) -> None:
         label = tk.Label(self.frame, text=text, bg=BG, fg=LINK_COLOR, font=(FONT, 9, "underline"), cursor="hand2")
@@ -54,7 +58,7 @@ class LoginView:
         entry = getattr(self, "user_entry", None)
         try:
             return entry.get().strip() if entry is not None else ""
-        except tk.TclError:          
+        except tk.TclError:
             return ""
 
     def _show_setup(self) -> None:
@@ -87,7 +91,7 @@ class LoginView:
         self.pass_entry.bind("<Return>", self.authenticate)
         self.user_entry.bind("<Return>", lambda _e: self.pass_entry.focus_set())
         CanvasButton(self.frame, "Login", self.authenticate, width=120, height=32).pack(pady=(20, 8))
-        self._link("Forgot password?", self.show_forgot)
+        self._link("Forgot password?", self.show_forgot_choice)
         self.user_entry.focus_set()
 
     def authenticate(self, _event=None) -> None:
@@ -122,9 +126,65 @@ class LoginView:
         CanvasButton(self.frame, "Save password", save, width=140, height=32).pack(pady=20)
         new_entry.focus_set()
 
+    def show_forgot_choice(self) -> None:
+        self._reset("Forgot your password?", "choice")
+        self._note("Choose how you want to prove it is you.")
+        configured = mailer.is_configured()
+        self.email_button = CanvasButton(self.frame, "📧 Email me a code", self.show_forgot_email, "#0d6efd",
+                                         width=230, height=36)
+        self.email_button.pack(pady=(18, 4))
+        self.email_button.set_enabled(configured)
+        if not configured:
+            self._note("Email is not set up on this computer (see the README, Email setup).", size=8, color=MUTED)
+        CanvasButton(self.frame, "🔑 Use my recovery key", self.show_forgot, "#6c757d", width=230,
+                     height=36).pack(pady=(10, 6))
+        self._link("Back to login", self._show_login)
+
+    def show_forgot_email(self) -> None:
+        self._reset("Reset by email", "email")
+        self._note("Enter the email address registered on your account. We send a 6-digit code that works for "
+                   f"{email_service.CODE_TTL_MINUTES} minutes.")
+        self.email_e = self._entry("Email address:")
+        CanvasButton(self.frame, "Send code", self.send_email_code, "#0d6efd", width=130, height=30).pack(pady=(6, 2))
+        self.email_status = self._note("", size=8, color=MUTED)
+        self.email_code_e = self._entry("6-digit code from the email:")
+        self.email_new_e = self._entry(f"New password (min {config.MIN_PASSWORD_LENGTH} characters):", show="*")
+        self.email_confirm_e = self._entry("Confirm new password:", show="*")
+        self.email_confirm_e.bind("<Return>", self.reset_with_email_code)
+        CanvasButton(self.frame, "Reset password", self.reset_with_email_code, "#198754", width=150,
+                     height=32).pack(pady=(14, 4))
+        self._link("Back", self.show_forgot_choice)
+        self.email_e.focus_set()
+
+    def send_email_code(self) -> None:
+        self.email_status.config(text="Sending...", fg=MUTED)
+        self.root.update_idletasks()
+        try:
+            email_service.request_reset_code(self.conn, self.email_e.get())
+        except POSError as exc:
+            self.email_status.config(text="", fg=MUTED)
+            messagebox.showerror("Could not send the code", str(exc))
+            return
+        self.email_status.config(text="If that address is registered, a code was sent. "
+                                      "Check your inbox and the spam folder.", fg=GOOD)
+        self.email_code_e.focus_set()
+
+    def reset_with_email_code(self, _event=None) -> None:
+        if self.email_new_e.get() != self.email_confirm_e.get():
+            messagebox.showerror("Error", "The two passwords do not match!")
+            return
+        try:
+            email_service.reset_password_with_code(self.conn, self.email_e.get(), self.email_code_e.get(),
+                                                   self.email_new_e.get())
+        except POSError as exc:
+            messagebox.showerror("Could not reset the password", str(exc))
+            return
+        messagebox.showinfo("Password changed", "Your password was changed. Please log in with the new password.")
+        self._show_login()
+
     def show_forgot(self) -> None:
-        prefill = self._typed_username()               
-        self._reset("Reset your password", "forgot")
+        prefill = self._typed_username()
+        self._reset("Reset with a recovery key", "forgot")
         self._note("Enter your username, the recovery key you saved, and choose a new password.")
         self.forgot_user_e = self._entry("Username:")
         self.forgot_user_e.insert(0, prefill)
@@ -133,7 +193,7 @@ class LoginView:
         self.forgot_confirm_e = self._entry("Confirm new password:", show="*")
         self.forgot_confirm_e.bind("<Return>", self.reset_with_key)
         CanvasButton(self.frame, "Reset password", self.reset_with_key, width=150, height=32).pack(pady=(16, 6))
-        self._link("Back to login", self._show_login)
+        self._link("Back", self.show_forgot_choice)
         self._note(FORGOT_HELP, size=8)
         (self.forgot_key_e if prefill else self.forgot_user_e).focus_set()
 

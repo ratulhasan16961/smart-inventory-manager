@@ -16,7 +16,7 @@ DEFAULTS = {
     "default_tax_rate": "0",
     "receipt_footer": "Thank you for shopping with us!",
 }
-LIMITS = {"shop_name": 30, "currency_symbol": 4, "receipt_footer": 41}  
+LIMITS = {"shop_name": 30, "currency_symbol": 4, "receipt_footer": 41}
 
 
 def get_all(conn: sqlite3.Connection) -> dict[str, str]:

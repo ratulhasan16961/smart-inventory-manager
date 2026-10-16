@@ -80,6 +80,9 @@ erDiagram
 15. **Recovery keys, not a reset button.** A forgot-password screen must prove who you are, so each user can hold a
     random 80-bit recovery key, stored only as a scrypt hash, single-use and rotated after use. The no-proof
     emergency reset is a command-line tool, because running it already requires access to the database file.
+16. **Email codes: verified address, hashed, short-lived.** Reset codes go only to an address its owner verified
+    with a code, are stored as scrypt hashes, expire after 10 minutes, die after 5 wrong tries and are rate-limited.
+    Mail credentials live in the environment / `mail.env`, never in the database or its backups.  
 ## Permissions
 
 | Permission | Admin | Cashier |

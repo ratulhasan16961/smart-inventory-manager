@@ -49,7 +49,7 @@ def deactivate_supplier(conn: sqlite3.Connection, session: Session, supplier_id:
 class POLine:
     product_id: int
     quantity: int
-    unit_cost: str 
+    unit_cost: str
 
 
 def _next_po_number(conn: sqlite3.Connection, moment) -> str:
@@ -181,7 +181,7 @@ class ReorderSuggestion:
     min_alert: int
     on_order: int
     quantity: int
-    unit_cost: str           
+    unit_cost: str
     supplier_id: int | None
     supplier_name: str
 

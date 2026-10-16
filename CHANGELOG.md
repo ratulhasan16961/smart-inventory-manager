@@ -1,4 +1,13 @@
 # Changelog
+## 2.5.0
+
+### Added
+- Forgot password > "Email me a code": a 6-digit code is emailed to the address registered on the account (valid
+  10 minutes, one use, 5 wrong attempts, one request per minute). Unknown addresses get no email and no hint.
+- Settings > Account Email: an address becomes the account email only after a code sent to it is entered.
+- Mail settings come from environment variables or a git-ignored `mail.env` (Gmail App Password); the password is
+  never stored in the database or backups. `POS_MAIL_MODE=console` prints the email in the terminal for testing.
+- Database upgrade v6: `users.email` (unique) and hashed one-time `email_codes`.
 
 ## 2.4.0
 

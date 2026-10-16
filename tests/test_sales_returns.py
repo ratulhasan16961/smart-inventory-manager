@@ -19,11 +19,11 @@ class QuoteTests(DbTestCase):
     def test_totals_discount_allocation_and_tax(self):
         q = sales.quote(self.conn, [(self.a, 2), (self.b, 1)], discount="5.00", tax_rate="10")
         self.assertEqual(q.subtotal_cents, 2550)
-        self.assertEqual(sum(l.discount_cents for l in q.lines), 500)        
+        self.assertEqual(sum(l.discount_cents for l in q.lines), 500)
         self.assertEqual(q.tax_cents, sum(l.tax_cents for l in q.lines))
         self.assertEqual(q.total_cents, sum(l.total_cents for l in q.lines))
         self.assertEqual(q.total_cents, 2550 - 500 + q.tax_cents)
-        self.assertEqual(q.tax_cents, 205)     
+        self.assertEqual(q.tax_cents, 205)
 
     def test_same_product_twice_is_merged(self):
         q = sales.quote(self.conn, [(self.a, 1), (self.a, 2)])
@@ -63,14 +63,14 @@ class CheckoutTests(DbTestCase):
     def test_failure_rolls_back_everything(self):
         with self.assertRaises(InsufficientStockError):
             sales.checkout(self.conn, ADMIN, [(self.a, 2), (self.b, 99)], customer_phone="0171")
-        self.assertEqual(self.stock(self.a), 10)                                
+        self.assertEqual(self.stock(self.a), 10)
         self.assertEqual(self.scalar("SELECT COUNT(*) FROM invoices"), 0)
         self.assertEqual(self.scalar("SELECT COUNT(*) FROM customers"), 0)
         self.assertEqual(self.scalar("SELECT COUNT(*) FROM stock_movements WHERE reason = 'SALE'"), 0)
 
     def test_repeated_adds_cannot_oversell(self):
         with self.assertRaises(InsufficientStockError):
-            sales.checkout(self.conn, ADMIN, [(self.b, 2), (self.b, 2)])      
+            sales.checkout(self.conn, ADMIN, [(self.b, 2), (self.b, 2)])
 
     def test_invoice_numbers_unique_and_sequential(self):
         nos = [sales.checkout(self.conn, ADMIN, [(self.a, 1)]).invoice_no for _ in range(3)]
@@ -100,7 +100,7 @@ class CheckoutTests(DbTestCase):
 
     def test_receipt_contains_key_lines(self):
         invoice = sales.checkout(self.conn, ADMIN, [(self.a, 2)], discount="1.00", tax_rate="10")
-        text = render_receipt(invoice)       
+        text = render_receipt(invoice)
         for needle in (invoice.invoice_no, "TOTAL PAID : $20.90", "Discount   : -$1.00", "A "):
             self.assertIn(needle, text)
 
@@ -110,7 +110,7 @@ class ReturnTests(DbTestCase):
         super().setUp()
         self.a = add_product(self.conn, "A", price="10.00", cost="6.00", stock=10)
         self.invoice = sales.checkout(self.conn, ADMIN, [(self.a, 3)], discount="1.00", tax_rate="10",
-                                      customer_name="Sam", customer_phone="0170")      
+                                      customer_name="Sam", customer_phone="0170")
 
     def test_partial_refunds_add_up_to_exactly_the_line_total(self):
         line_total = self.invoice.items[0].line_total_cents
@@ -126,7 +126,7 @@ class ReturnTests(DbTestCase):
         with self.assertRaises(ValidationError) as ctx:
             ret.process_return(self.conn, ADMIN, self.invoice.invoice_no, self.a, 2)
         self.assertIn("Only 1", str(ctx.exception))
-        self.assertEqual(self.stock(self.a), 9)          
+        self.assertEqual(self.stock(self.a), 9)
         self.assertEqual(self.scalar("SELECT COUNT(*) FROM sales_returns"), 1)
 
     def test_not_restocked_leaves_stock_alone(self):

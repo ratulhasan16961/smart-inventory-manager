@@ -4,8 +4,8 @@ from unittest import mock
 
 try:
     import tkinter as tk
-    import tkinter.messagebox  
-except ImportError: 
+    import tkinter.messagebox
+except ImportError:
     tk = None
 
 from pos_erp.services import user_service
@@ -52,13 +52,13 @@ class UiRound1Tests(unittest.TestCase):
     def test_first_run_setup_screen_creates_the_admin(self):
         from pos_erp.ui.login import LoginView
         sessions = []
-        view = LoginView(self.root, self.conn, sessions.append)       
+        view = LoginView(self.root, self.conn, sessions.append)
         view.user_entry.delete(0, tk.END)
         view.user_entry.insert(0, "owner")
         view.pass_entry.insert(0, "owner-pass-1")
         view.confirm_entry.insert(0, "owner-pass-1")
         view.create_admin()
-        self.assertEqual(sessions, [])                               
+        self.assertEqual(sessions, [])
         view.continue_after_key()
         self.assertEqual([s.username for s in sessions], ["owner"])
         self.assertFalse(user_service.needs_setup(self.conn))

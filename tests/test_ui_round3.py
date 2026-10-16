@@ -4,8 +4,8 @@ from unittest import mock
 
 try:
     import tkinter as tk
-    import tkinter.messagebox 
-except ImportError: 
+    import tkinter.messagebox
+except ImportError:
     tk = None
 
 from pos_erp.services import purchase_service, till_service
@@ -52,7 +52,7 @@ class UiRound3Tests(unittest.TestCase):
     def prepare_customer(self):
         add_product(self.conn, "Phone", price="150.00", cost="100.00", stock=20, barcode="999")
         till_service.checkout_with_payment(self.conn, ADMIN, [(1, 2)], customer_name="Sam",
-                                           customer_phone="0170")                      
+                                           customer_phone="0170")
 
     def test_lookup_fills_the_name_and_shows_points(self):
         self.prepare_customer()
@@ -126,13 +126,13 @@ class UiRound3Tests(unittest.TestCase):
     def test_reorder_dialog(self):
         from pos_erp.ui.dialogs.reorder_dialog import open_reorder
         ctx = self.window().ctx
-        open_reorder(ctx, lambda: None)                                  
+        open_reorder(ctx, lambda: None)
         self.dialogs["showinfo"].assert_called_once()
         add_product(self.conn, "Tea", cost="3.00", stock=1, min_alert=5)
-        open_reorder(ctx, lambda: None)                                    
+        open_reorder(ctx, lambda: None)
         self.dialogs["showwarning"].assert_called_once()
         purchase_service.add_supplier(self.conn, ADMIN, "Acme")
-        open_reorder(ctx, lambda: None)                                   
+        open_reorder(ctx, lambda: None)
         self.root.update_idletasks()
         self.dialogs["showerror"].assert_not_called()
 

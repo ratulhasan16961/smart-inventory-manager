@@ -44,7 +44,7 @@ class PurchaseOrderTests(DbTestCase):
         row = po.list_purchase_orders(self.conn, ADMIN)[0]
         self.assertEqual((row["status"], row["total_cents"], row["ordered"], row["received"]), ("Ordered", 11500, 30, 0))
         self.assertRegex(row["po_number"], r"^PO-\d{8}-0001$")
-        self.assertEqual(self.stock(self.p1), 5)          
+        self.assertEqual(self.stock(self.p1), 5)
         self.assertTrue(self.make_po() != po_id)
 
     def test_partial_then_full_receive_updates_stock_ledger_and_cost(self):
@@ -67,7 +67,7 @@ class PurchaseOrderTests(DbTestCase):
         items = self.items(po_id)
         with self.assertRaises(ValidationError):
             po.receive_purchase_order(self.conn, ADMIN, po_id, {items[self.p2]["id"]: 5, items[self.p1]["id"]: 11})
-        self.assertEqual((self.stock(self.p1), self.stock(self.p2)), (5, 0))    
+        self.assertEqual((self.stock(self.p1), self.stock(self.p2)), (5, 0))
         with self.assertRaises(ValidationError):
             po.receive_purchase_order(self.conn, ADMIN, po_id, {})
         with self.assertRaises(NotFoundError):
@@ -83,7 +83,7 @@ class PurchaseOrderTests(DbTestCase):
         po_id = self.make_po()
         po.receive_purchase_order(self.conn, ADMIN, po_id, {self.items(po_id)[self.p1]["id"]: 1})
         with self.assertRaises(ValidationError):
-            po.cancel_purchase_order(self.conn, ADMIN, po_id)   
+            po.cancel_purchase_order(self.conn, ADMIN, po_id)
         other = self.make_po()
         po.cancel_purchase_order(self.conn, ADMIN, other)
         self.assertEqual(po.list_purchase_orders(self.conn, ADMIN, "Cancelled")[0]["id"], other)
@@ -98,7 +98,7 @@ class PurchaseOrderTests(DbTestCase):
             po.create_purchase_order(self.conn, ADMIN, 999, [POLine(self.p1, 1, "1")])
         with self.assertRaises(NotFoundError):
             po.create_purchase_order(self.conn, ADMIN, self.supplier, [POLine(9999, 1, "1")])
-        self.assertEqual(self.scalar("SELECT COUNT(*) FROM purchase_orders"), 0)  
+        self.assertEqual(self.scalar("SELECT COUNT(*) FROM purchase_orders"), 0)
         with self.assertRaises(PermissionDenied):
             po.create_purchase_order(self.conn, CASHIER, self.supplier, [POLine(self.p1, 1, "1")])
 
@@ -113,7 +113,7 @@ class LedgerTests(DbTestCase):
 
     def test_reconcile_detects_tampering_and_filters(self):
         pid = add_product(self.conn, "Findable", stock=5)
-        self.conn.execute("UPDATE products SET stock = 99 WHERE id = ?", (pid,))  
+        self.conn.execute("UPDATE products SET stock = 99 WHERE id = ?", (pid,))
         bad = stock_service.reconcile(self.conn, ADMIN)
         self.assertEqual((bad[0]["recorded"], bad[0]["ledger"]), (99, 5))
         self.assertEqual(len(stock_service.list_movements(self.conn, ADMIN, "findable")), 1)

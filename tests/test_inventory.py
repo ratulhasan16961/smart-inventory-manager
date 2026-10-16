@@ -23,11 +23,11 @@ class ProductTests(DbTestCase):
 
     def test_blank_barcodes_do_not_collide_but_real_duplicates_do(self):
         add_product(self.conn, "A")
-        add_product(self.conn, "B")                      
+        add_product(self.conn, "B")
         add_product(self.conn, "C", barcode="X1")
         with self.assertRaises(ConflictError):
             add_product(self.conn, "D", barcode="X1")
-        self.assertEqual(self.scalar("SELECT COUNT(*) FROM products"), 3)   
+        self.assertEqual(self.scalar("SELECT COUNT(*) FROM products"), 3)
 
     def test_validation(self):
         for kwargs in ({"name": " "}, {"price": "abc"}, {"price": "-1"}, {"stock": "2.5"}, {"expiry": "2027/03"}):
@@ -44,13 +44,13 @@ class ProductTests(DbTestCase):
                      lambda: inv.adjust_stock(self.conn, CASHIER, pid, 1, "x")):
             with self.assertRaises(PermissionDenied):
                 call()
-        self.assertEqual(inv.get_product(self.conn, CASHIER, pid)["id"], pid)   
+        self.assertEqual(inv.get_product(self.conn, CASHIER, pid)["id"], pid)
 
     def test_edit_logs_old_and_new_values_and_requires_reason_for_stock(self):
         pid = add_product(self.conn, price="10.00", stock=10)
         form = ProductForm(name="Widget", price="12.00", buying_price="6.00", stock="14", min_alert="2")
         with self.assertRaises(ValidationError):
-            inv.update_product(self.conn, ADMIN, pid, form)                      
+            inv.update_product(self.conn, ADMIN, pid, form)
         self.assertEqual(self.stock(pid), 10)
         inv.update_product(self.conn, ADMIN, pid, form, stock_note="Stock take")
         self.assertEqual(self.stock(pid), 14)
@@ -78,21 +78,21 @@ class ProductTests(DbTestCase):
         with self.assertRaises(NotFoundError):
             inv.find_for_sale(self.conn, ADMIN, "B1")
         self.assertEqual(self.scalar("SELECT COUNT(*) FROM products WHERE id = ?", pid), 1)
-        add_product(self.conn, "Replacement", barcode="B1")  
+        add_product(self.conn, "Replacement", barcode="B1")
 
     def test_search_and_lookup(self):
         a = add_product(self.conn, "Green Tea", barcode="9001", category="Grocery")
         add_product(self.conn, "Mouse", category="Electronics")
         self.assertEqual([r["name"] for r in inv.list_products(self.conn, ADMIN, "tea")], ["Green Tea"])
         self.assertEqual([r["name"] for r in inv.list_products(self.conn, ADMIN, "electr")], ["Mouse"])
-        self.assertEqual(len(inv.list_products(self.conn, ADMIN, "%")), 0)   
+        self.assertEqual(len(inv.list_products(self.conn, ADMIN, "%")), 0)
         self.assertEqual(inv.find_for_sale(self.conn, ADMIN, "9001")["id"], a)
         self.assertEqual(inv.find_for_sale(self.conn, ADMIN, str(a))["id"], a)
 
     def test_expiry_flags(self):
         today = datetime(2026, 10, 5)
         self.assertEqual(inv.expiry_status("2026-09", today), "expired")
-        self.assertEqual(inv.expiry_status("2026-10", today), "expiring") 
+        self.assertEqual(inv.expiry_status("2026-10", today), "expiring")
         self.assertIsNone(inv.expiry_status("2027-06", today))
         self.assertIsNone(inv.expiry_status("", today))
         self.assertIsNone(inv.expiry_status("garbage", today))
@@ -116,7 +116,7 @@ class CsvTests(DbTestCase):
         inv.export_csv(self.conn, ADMIN, path)
         with open(path, newline="") as f:
             self.assertEqual(next(csv.reader(f)), list(inv.CSV_COLUMNS))
-        report = inv.import_csv(self.conn, ADMIN, path)    
+        report = inv.import_csv(self.conn, ADMIN, path)
         self.assertTrue(report.ok)
         self.assertEqual(self.scalar("SELECT COUNT(*) FROM products"), 2)
         self.assertEqual(self.scalar("SELECT id FROM products WHERE barcode = '111'"), a)
@@ -125,16 +125,16 @@ class CsvTests(DbTestCase):
     def test_import_upserts_by_barcode_then_name_and_records_ledger(self):
         a = add_product(self.conn, "Mouse", price="15.00", stock=10, barcode="111")
         b = add_product(self.conn, "Keyboard", price="50.00", stock=5)
-        path = self.write_csv(["Mouse v2,Electronics,8,16.00,15,2,,111,Central,",    
-                               "keyboard,Electronics,30,55.00,5,1,,,Central,",        
-                               "Cable,Electronics,2,6.00,40,5,,222,Central,2030-01"]) 
+        path = self.write_csv(["Mouse v2,Electronics,8,16.00,15,2,,111,Central,",
+                               "keyboard,Electronics,30,55.00,5,1,,,Central,",
+                               "Cable,Electronics,2,6.00,40,5,,222,Central,2030-01"])
         report = inv.import_csv(self.conn, ADMIN, path)
         self.assertEqual((report.created, report.updated, report.ok), (1, 2, True))
         self.assertEqual(inv.get_product(self.conn, ADMIN, a)["name"], "Mouse v2")
         self.assertEqual(self.stock(a), 15)
         self.assertEqual(inv.get_product(self.conn, ADMIN, b)["price_cents"], 5500)
         imports = self.scalar("SELECT COUNT(*) FROM stock_movements WHERE reason = 'IMPORT'")
-        self.assertEqual(imports, 2)           
+        self.assertEqual(imports, 2)
         self.assertEqual(stock_service.reconcile(self.conn, ADMIN), [])
 
     def test_bad_rows_abort_the_whole_import(self):
@@ -144,7 +144,7 @@ class CsvTests(DbTestCase):
         report = inv.import_csv(self.conn, ADMIN, path)
         self.assertFalse(report.ok)
         self.assertEqual(len(report.errors), 2)
-        self.assertEqual(self.scalar("SELECT stock FROM products WHERE barcode = '111'"), 10)  
+        self.assertEqual(self.scalar("SELECT stock FROM products WHERE barcode = '111'"), 10)
         self.assertEqual(self.scalar("SELECT COUNT(*) FROM products"), 1)
 
     def test_dry_run_changes_nothing(self):

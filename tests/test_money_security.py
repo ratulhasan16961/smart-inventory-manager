@@ -8,7 +8,7 @@ from pos_erp.permissions import Session
 class MoneyTests(unittest.TestCase):
     def test_to_cents_half_up(self):
         self.assertEqual(money.to_cents("12.5"), 1250)
-        self.assertEqual(money.to_cents(0.285), 29)     
+        self.assertEqual(money.to_cents(0.285), 29)
         self.assertEqual(money.to_cents("2.675"), 268)
         self.assertEqual(money.to_cents(Decimal("5")), 500)
 

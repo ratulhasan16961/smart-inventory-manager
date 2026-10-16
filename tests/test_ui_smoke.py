@@ -8,8 +8,8 @@ from unittest import mock
 
 try:
     import tkinter as tk
-    import tkinter.messagebox 
-except ImportError:  
+    import tkinter.messagebox
+except ImportError:
     tk = None
 
 from pos_erp.services import auth_service, sales_service
@@ -132,7 +132,7 @@ class UiSmokeTests(unittest.TestCase):
         view, sessions = self.login_view()
         view.user_entry.insert(0, "admin")
         view.pass_entry.insert(0, "1234")
-        view.authenticate()         
+        view.authenticate()
         self.assertEqual(sessions, [])
         self.assert_no_errors()
 

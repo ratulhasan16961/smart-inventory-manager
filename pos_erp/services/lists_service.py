@@ -9,8 +9,8 @@ from ..errors import ConflictError, NotFoundError, ValidationError
 from ..permissions import Session
 from . import audit
 
-KINDS = {"categories": "category", "warehouses": "warehouse"}  
-PROTECTED = {"categories": "General"}                         
+KINDS = {"categories": "category", "warehouses": "warehouse"}
+PROTECTED = {"categories": "General"}
 DEFAULTS = {"categories": ("General",), "warehouses": ("Central Warehouse",)}
 
 

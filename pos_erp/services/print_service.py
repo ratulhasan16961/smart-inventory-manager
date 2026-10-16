@@ -20,7 +20,7 @@ def print_text(text: str) -> None:
         with handle:
             handle.write(text)
         try:
-            os.startfile(handle.name, "print")  
+            os.startfile(handle.name, "print")
         except OSError as exc:
             raise PrintError(f"Could not print: {exc}") from exc
         return

@@ -61,7 +61,7 @@ def open_shop_settings(ctx: AppContext) -> None:
 
 @handle_errors
 def open_user_management(ctx: AppContext) -> None:
-    user_service.list_users(ctx.conn, ctx.session)  
+    user_service.list_users(ctx.conn, ctx.session)
     win = tk.Toplevel(ctx.root)
     win.title("User Management")
     win.geometry("860x520")

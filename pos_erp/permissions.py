@@ -27,13 +27,13 @@ ALL_PERMISSIONS = frozenset({
     "account.update",
     "barcode.generate",
     "users.manage",
-    "sales.void",          
+    "sales.void",
     "invoices.view",
-    "customers.lookup",    
-    "reports.view",        
-    "settings.manage",     
-    "system.restore",      
-    "lists.manage",       
+    "customers.lookup",
+    "reports.view",
+    "settings.manage",
+    "system.restore",
+    "lists.manage",
 })
 
 PERMISSIONS_BY_ROLE: dict[str, frozenset[str]] = {

@@ -70,6 +70,23 @@ Demo logins: `admin` / `demo-admin-pass` and `cashier` / `demo-cashier-pass`.
 Requirements: Python 3.10+ with Tkinter (included with the python.org installers; on Debian/Ubuntu install
 `python3-tk`; with Homebrew install `python-tk`). `matplotlib` is optional and only used for the pie chart in Analytics.
 
+## Email setup (optional): password reset codes
+
+"Forgot password?" can email a one-time code to the address registered on the account (Settings > Account Email,
+verified with a code first). Sending needs a mail account. With Gmail:
+
+1. Turn on 2-Step Verification, then create an **App Password** (Google Account > Security > App passwords).
+2. Create `mail.env` next to `inventory_app.py` (it is git-ignored; `chmod 600 mail.env`):
+
+```text
+POS_SMTP_USER=your-shop@gmail.com
+POS_SMTP_PASSWORD=abcd efgh ijkl mnop
+```
+
+Other providers: also set `POS_SMTP_HOST` and `POS_SMTP_PORT`. The mail password never goes into the database or
+backups. To try the flow without a mail account, start the app with `POS_MAIL_MODE=console`: the email is printed
+in the terminal instead of being sent. Without email set up, the recovery key and the command-line tool still work.
+
 ## Use it with your own data
 
 ```bash

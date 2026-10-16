@@ -6,6 +6,9 @@
 *.bak
 backups/
 invoices/
+demo/
 logs/
 __pycache__/
 *.pyc
+
+mail.env

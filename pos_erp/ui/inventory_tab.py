@@ -61,7 +61,7 @@ class InventoryTab:
         self.clear_form()
 
         ctx = self.ctx
-        specs = ( 
+        specs = (
             ("➕ Add Product", self.add_product, "#198754", "inventory.manage", "#ffffff"),
             ("📊 Analytics", lambda: open_analytics(ctx), "#fd7e14", "analytics.view", "#ffffff"),
             ("🗑 Delete Product", self.delete_selected, "#dc3545", "inventory.manage", "#ffffff"),

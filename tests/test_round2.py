@@ -44,10 +44,10 @@ class UpgradeV3Tests(unittest.TestCase):
         ensure_schema(conn)
         conn.execute("INSERT INTO invoices (invoice_no, subtotal_cents, total_cents, payment_method, cashier, created_at)"
                      " VALUES ('INV-X', 500, 500, 'Cash', 'a', '2026-01-01 10:00:00')")
-        self.assertEqual(apply_upgrades(conn), [2, 3, 4])
+        self.assertEqual(apply_upgrades(conn), list(range(2, LATEST_VERSION + 1)))
         row = conn.execute("SELECT * FROM invoices").fetchone()
         self.assertEqual((row["tendered_cents"], row["change_cents"], row["status"]), (500, 0, "Completed"))
-        self.assertEqual(LATEST_VERSION, 4)
+        self.assertGreaterEqual(LATEST_VERSION, 3)
         with self.assertRaises(sqlite3.IntegrityError):
             conn.execute("UPDATE invoices SET status = 'Weird'")
 
@@ -69,7 +69,7 @@ class CashTests(DbTestCase):
 
     def test_exact_blank_and_default_method(self):
         for tendered in ("20", "", None):
-            invoice = self.pay(tendered=tendered)            
+            invoice = self.pay(tendered=tendered)
             meta = till_service.invoice_meta(self.conn, invoice.invoice_no)
             self.assertEqual((meta["tendered_cents"], meta["change_cents"]), (2000, 0), str(tendered))
 
@@ -98,7 +98,7 @@ class VoidTests(DbTestCase):
         super().setUp()
         self.b = add_product(self.conn, "B", price="50.00", cost="20.00", stock=10)
         self.invoice = till_service.checkout_with_payment(
-            self.conn, ADMIN, [(self.b, 3)], customer_name="Sam", customer_phone="0170") 
+            self.conn, ADMIN, [(self.b, 3)], customer_name="Sam", customer_phone="0170")
 
     def customer(self):
         row = self.conn.execute("SELECT loyalty_points, total_spent_cents FROM customers WHERE phone = '0170'").fetchone()
@@ -162,13 +162,13 @@ class InvoiceListTests(DbTestCase):
         self.second = self.sale(datetime(2026, 10, 5, 9, 0), "Rina")
 
     def numbers(self, **kw):
-        return [r["invoice_no"] for r in till_service.list_invoices(self.conn, CASHIER, **kw)] 
+        return [r["invoice_no"] for r in till_service.list_invoices(self.conn, CASHIER, **kw)]
 
     def test_newest_first_search_and_dates(self):
         self.assertEqual(self.numbers(), [self.second.invoice_no, self.first.invoice_no])
         self.assertEqual(self.numbers(query="sam"), [self.first.invoice_no])
         self.assertEqual(self.numbers(query=self.second.invoice_no), [self.second.invoice_no])
-        self.assertEqual(self.numbers(query="%"), [])                              
+        self.assertEqual(self.numbers(query="%"), [])
         self.assertEqual(self.numbers(date_from="2026-10-05"), [self.second.invoice_no])
         self.assertEqual(self.numbers(date_to="2026-10-01"), [self.first.invoice_no])
         self.assertEqual(self.numbers(date_from="2026-10-02", date_to="2026-10-04"), [])
@@ -191,13 +191,13 @@ class ReportTests(DbTestCase):
         super().setUp()
         self.a = add_product(self.conn, "A", price="10.00", cost="6.00", stock=100, category="Grocery")
         self.b = add_product(self.conn, "B", price="20.00", cost="5.00", stock=100, category="Electronics")
-        self.inv1 = self.sale(datetime(2026, 10, 1, 10, 0), [(self.a, 2), (self.b, 1)])          
+        self.inv1 = self.sale(datetime(2026, 10, 1, 10, 0), [(self.a, 2), (self.b, 1)])
         self.sale(datetime(2026, 10, 2, 12, 0), [(self.a, 1)], discount="2.00", tax_rate="10",
-                  payment_method="Card")                                                         
-        self.sale(datetime(2026, 10, 5, 9, 0), [(self.b, 2)])                                    
+                  payment_method="Card")
+        self.sale(datetime(2026, 10, 5, 9, 0), [(self.b, 2)])
         voided = self.sale(datetime(2026, 10, 2, 15, 0), [(self.a, 1)])
         till_service.void_invoice(self.conn, ADMIN, voided.invoice_no, "Customer left")
-        returns_service.process_return(self.conn, ADMIN, self.inv1.invoice_no, self.a, 1, "Wrong size")  
+        returns_service.process_return(self.conn, ADMIN, self.inv1.invoice_no, self.a, 1, "Wrong size")
 
     def test_report_for_the_first_two_days(self):
         r = reporting_service.sales_report(self.conn, ADMIN, "2026-10-01", "2026-10-02")
@@ -217,7 +217,7 @@ class ReportTests(DbTestCase):
         self.assertEqual((empty.orders, empty.net_cents, empty.daily, empty.top_products), (0, 0, (), ()))
 
     def test_dashboard_ignores_voided_invoices(self):
-        self.assertEqual(reporting_service.dashboard_stats(self.conn).net_revenue_cents, 7880) 
+        self.assertEqual(reporting_service.dashboard_stats(self.conn).net_revenue_cents, 7880)
         self.assertEqual(reporting_service.sales_summary(self.conn, ADMIN).orders, 3)
 
     def test_validation_and_permissions(self):

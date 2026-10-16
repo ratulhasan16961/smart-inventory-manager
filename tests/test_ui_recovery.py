@@ -4,8 +4,8 @@ from unittest import mock
 
 try:
     import tkinter as tk
-    import tkinter.messagebox  
-except ImportError: 
+    import tkinter.messagebox
+except ImportError:
     tk = None
 
 from pos_erp.errors import AuthenticationError
@@ -41,7 +41,7 @@ class UiRecoveryTests(unittest.TestCase):
         return LoginView(self.root, self.conn, sessions.append), sessions
 
     def test_first_run_issues_a_recovery_key_before_logging_in(self):
-        view, sessions = self.view()                                 
+        view, sessions = self.view()
         view.user_entry.delete(0, tk.END)
         view.user_entry.insert(0, "owner")
         view.pass_entry.insert(0, "owner-pass-1")
@@ -54,17 +54,17 @@ class UiRecoveryTests(unittest.TestCase):
 
     def test_forgot_password_screen_resets_the_password(self):
         _session, key = self.make_owner()
-        view, sessions = self.view()                                  
+        view, sessions = self.view()
         view.user_entry.insert(0, "owner")
         view.show_forgot()
-        self.assertEqual(view.forgot_user_e.get(), "owner")          
+        self.assertEqual(view.forgot_user_e.get(), "owner")
         view.forgot_key_e.insert(0, key)
         view.forgot_new_e.insert(0, "brand-new-pass")
         view.forgot_confirm_e.insert(0, "brand-new-pass")
         view.reset_with_key()
         self.dialogs["showerror"].assert_not_called()
-        self.assertEqual(sessions, [])                               
-        view.continue_after_key()                                     
+        self.assertEqual(sessions, [])
+        view.continue_after_key()
         self.assertEqual(auth_service.authenticate(self.conn, "owner", "brand-new-pass").username, "owner")
 
     def test_wrong_key_and_mismatching_passwords_are_refused(self):
@@ -76,11 +76,11 @@ class UiRecoveryTests(unittest.TestCase):
         view.forgot_new_e.insert(0, "brand-new-pass")
         view.forgot_confirm_e.insert(0, "brand-new-pass")
         view.reset_with_key()
-        self.assertEqual(self.dialogs["showerror"].call_count, 1)     
+        self.assertEqual(self.dialogs["showerror"].call_count, 1)
         view.forgot_confirm_e.delete(0, tk.END)
         view.forgot_confirm_e.insert(0, "different-pass-1")
         view.reset_with_key()
-        self.assertEqual(self.dialogs["showerror"].call_count, 2)  
+        self.assertEqual(self.dialogs["showerror"].call_count, 2)
         self.assertEqual(auth_service.authenticate(self.conn, "owner", "owner-pass-1").username, "owner")
 
     def test_settings_dialog_generates_a_new_key(self):
@@ -88,7 +88,7 @@ class UiRecoveryTests(unittest.TestCase):
         from pos_erp.ui.main_window import MainWindow
         session, old_key = self.make_owner()
         dialog = open_recovery_key(MainWindow(self.root, self.conn, session).ctx)
-        dialog.generate()                                           
+        dialog.generate()
         new_key = dialog.key_entry.get()
         self.assertRegex(new_key, r"^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$")
         self.assertNotEqual(new_key, old_key)

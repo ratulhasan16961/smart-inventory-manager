@@ -1,2 +1,1 @@
-# Runtime. The app itself only needs the Python standard library (Tkinter + SQLite).
-matplotlib>=3.8   # optional: pie chart in the Analytics window
+matplotlib>=3.8   

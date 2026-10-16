@@ -32,6 +32,7 @@ def _upgrade_v2(conn: sqlite3.Connection) -> None:
                                     ("warehouses", "warehouse", DEFAULT_WAREHOUSES)):
         conn.execute(_LIST_TABLE.format(table=table))
         conn.executemany(f"INSERT OR IGNORE INTO {table} (name) VALUES (?)", [(name,) for name in defaults])
+        # keep every value the existing products already use
         conn.execute(f"INSERT OR IGNORE INTO {table} (name) SELECT DISTINCT trim({column}) FROM products "
                      f"WHERE trim({column}) <> ''")
     conn.execute("UPDATE products SET expiry = substr(expiry, 1, 5) || '0' || substr(expiry, 6) "
@@ -47,7 +48,7 @@ def _upgrade_v3(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE invoices ADD COLUMN voided_at TEXT")
     conn.execute("ALTER TABLE invoices ADD COLUMN voided_by TEXT")
     conn.execute("ALTER TABLE invoices ADD COLUMN void_reason TEXT NOT NULL DEFAULT ''")
-    conn.execute("UPDATE invoices SET tendered_cents = total_cents")  
+    conn.execute("UPDATE invoices SET tendered_cents = total_cents")
     conn.execute("CREATE INDEX idx_invoices_status ON invoices (status)")
 
 
@@ -67,8 +68,26 @@ def _upgrade_v5(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE users ADD COLUMN recovery_locked_until TEXT")
 
 
+def _upgrade_v6(conn: sqlite3.Connection) -> None:
+    """Verified account email (unique) and one-time email codes (verification / password reset), stored hashed."""
+    conn.execute("ALTER TABLE users ADD COLUMN email TEXT")
+    conn.execute("CREATE UNIQUE INDEX idx_users_email ON users (email COLLATE NOCASE) WHERE email IS NOT NULL")
+    conn.execute("""CREATE TABLE email_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users (id),
+        purpose TEXT NOT NULL CHECK (purpose IN ('verify', 'reset')),
+        email TEXT NOT NULL,
+        code_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        used INTEGER NOT NULL DEFAULT 0 CHECK (used IN (0, 1))
+    )""")
+    conn.execute("CREATE INDEX idx_email_codes_user ON email_codes (user_id, purpose, id)")
+
+
 UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {
-    2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5}
+    2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5, 6: _upgrade_v6}
 LATEST_VERSION = max(UPGRADES)
 
 

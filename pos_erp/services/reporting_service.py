@@ -119,9 +119,9 @@ class SalesReport:
     voided_orders: int
     voided_cents: int
     daily: tuple[DailyRow, ...]
-    top_products: tuple[tuple[str, int, int], ...]    
-    payments: tuple[tuple[str, int, int], ...]       
-    categories: tuple[tuple[str, int, int], ...]     
+    top_products: tuple[tuple[str, int, int], ...]
+    payments: tuple[tuple[str, int, int], ...]
+    categories: tuple[tuple[str, int, int], ...]
 
     @property
     def net_cents(self) -> int:
