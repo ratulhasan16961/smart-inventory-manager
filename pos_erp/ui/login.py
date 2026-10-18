@@ -218,7 +218,8 @@ class LoginView:
                    "Write this recovery key down and keep it somewhere safe. If you ever forget your password, it is "
                    "how you get back in from the login screen. It is shown only once and works only once.")
         self.key_entry = tk.Entry(self.frame, font=("Courier", 15, "bold"), justify="center", width=21,
-                                  relief="solid", readonlybackground="#ffffff")
+                                relief="flat", bd=0, highlightthickness=1, highlightbackground="#adb5bd",
+                                  readonlybackground="#ffffff")
         self.key_entry.insert(0, key)
         self.key_entry.config(state="readonly")
         self.key_entry.pack(pady=16, ipady=6)
