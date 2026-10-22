@@ -105,7 +105,6 @@ def _upgrade_v7(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_ledger_created ON customer_ledger (created_at)")
 
 
-
 def _upgrade_v8(conn: sqlite3.Connection) -> None:
     """Daily expenses and register shifts (opening float, counted drawer, stored summary)."""
     conn.execute("""CREATE TABLE expenses (
@@ -140,7 +139,8 @@ def _upgrade_v8(conn: sqlite3.Connection) -> None:
 
 
 UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {
-    2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5, 6: _upgrade_v6, 7: _upgrade_v7}
+    2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5, 6: _upgrade_v6, 7: _upgrade_v7,
+    8: _upgrade_v8}
 LATEST_VERSION = max(UPGRADES)
 
 
