@@ -86,8 +86,27 @@ def _upgrade_v6(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_email_codes_user ON email_codes (user_id, purpose, id)")
 
 
+def _upgrade_v7(conn: sqlite3.Connection) -> None:
+    """Customer credit (baki): a per-customer credit limit and a ledger of charges, payments and credit notes."""
+    conn.execute("ALTER TABLE customers ADD COLUMN credit_limit_cents INTEGER NOT NULL DEFAULT 0 "
+                 "CHECK (credit_limit_cents >= 0)")
+    conn.execute("""CREATE TABLE customer_ledger (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL REFERENCES customers (id),
+        entry_type TEXT NOT NULL CHECK (entry_type IN ('CHARGE', 'PAYMENT', 'CREDIT_NOTE', 'ADJUSTMENT')),
+        amount_cents INTEGER NOT NULL CHECK (amount_cents <> 0),
+        invoice_id INTEGER REFERENCES invoices (id),
+        method TEXT NOT NULL DEFAULT '',
+        note TEXT NOT NULL DEFAULT '',
+        username TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""")
+    conn.execute("CREATE INDEX idx_ledger_customer ON customer_ledger (customer_id, id)")
+    conn.execute("CREATE INDEX idx_ledger_created ON customer_ledger (created_at)")
+
+
 UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {
-    2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5, 6: _upgrade_v6}
+    2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5, 6: _upgrade_v6, 7: _upgrade_v7}
 LATEST_VERSION = max(UPGRADES)
 
 

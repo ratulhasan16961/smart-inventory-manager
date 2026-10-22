@@ -12,6 +12,8 @@ from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styl
                        handle_errors, make_tree)
 from .email_dialogs import open_account_email
 from .recovery_dialogs import open_recovery_key
+from .ledger_dialogs import open_receivables
+from .receipt_dialogs import open_receipt_settings
 from .system_dialogs import open_backup_restore, open_manage_lists, open_shop_settings, open_user_management
 
 try:
@@ -82,7 +84,7 @@ def open_customers(ctx: AppContext) -> None:
 def open_settings(ctx: AppContext) -> None:
     win = tk.Toplevel(ctx.root)
     win.title("Settings & Maintenance")
-    win.geometry("380x800")
+    win.geometry("380x880")
     win.config(bg=WHITE)
     tk.Label(win, text="Update Security Settings", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack(pady=8)
     tk.Label(win, text="Username:", **LABEL_STYLE).pack()
@@ -116,11 +118,15 @@ def open_settings(ctx: AppContext) -> None:
     customers_button.set_enabled(ctx.can("customers.view"))
     CanvasButton(win, "🔑 Recovery Key", lambda: open_recovery_key(ctx), "#d63384", width=190, height=30).pack(pady=4)
     CanvasButton(win, "📧 Account Email", lambda: open_account_email(ctx), "#0b5ed7", width=190, height=30).pack(pady=4)
+    dues_button = CanvasButton(win, "📒 Customer Dues", lambda: open_receivables(ctx), "#b02a37", width=190, height=30)
+    dues_button.pack(pady=4)
+    dues_button.set_enabled(ctx.can("customers.lookup"))
 
     tk.Frame(win, height=1, bg="#cccccc").pack(fill="x", padx=15, pady=8)
     tk.Label(win, text="Administration", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack()
     for text, handler, color, permission in (
             ("🛠 Shop Settings", open_shop_settings, "#0d6efd", "settings.manage"),
+            ("🧾 Receipt & Printer", open_receipt_settings, "#20c997", "settings.manage"),
             ("👤 Manage Users", open_user_management, "#6610f2", "users.manage"),
             ("💽 Backup & Restore", open_backup_restore, "#fd7e14", "system.restore"),
             ("🗂 Categories & Warehouses", open_manage_lists, "#20c997", "lists.manage")):
