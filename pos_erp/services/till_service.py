@@ -1,4 +1,4 @@
-"""Till operations beyond a plain checkout: cash tendering, loyalty points, voiding, invoice lookup."""
+"""Till operations beyond a plain checkout: cash tendering, credit (baki) sales, loyalty points, voiding, lookup."""
 from __future__ import annotations
 
 import sqlite3
@@ -10,7 +10,7 @@ from ..db.connection import transaction
 from ..errors import NotFoundError, ValidationError
 from ..money import fmt, plain, to_cents
 from ..permissions import Session
-from . import audit, sales_service, stock_service
+from . import audit, credit_service, sales_service, stock_service
 
 
 def cash_method() -> str:
@@ -70,26 +70,43 @@ def checkout_with_payment(conn: sqlite3.Connection, session: Session, items: Ite
                           redeem_points=0):
     """Normal checkout plus the amount received / change and optional loyalty redemption, all in ONE
     transaction: if the cash is too little or the points are not valid, the whole sale is rolled back.
-    Redeemed points become part of the invoice discount (and are recorded separately)."""
+    Redeemed points become part of the invoice discount (and are recorded separately).
+
+    Credit (baki): with payment_method == credit_service.CREDIT_METHOD the customer's phone number is required,
+    `tendered` is what the customer pays now (blank = nothing), and the rest goes on the customer's account
+    (refused when it would pass the credit limit, and the whole sale rolls back)."""
     payment_method = payment_method or cash_method()
+    credit = payment_method == credit_service.CREDIT_METHOD
+    if credit:
+        session.require(credit_service.PERM_CREDIT_SALE)
     items = list(items)
     points = _whole_points(redeem_points)
     phone = customer_phone.strip()
+    if credit and phone in ("", "N/A"):
+        raise ValidationError("Credit sales need the customer's phone number.")
     with transaction(conn):
         value = 0
         if points:
             value = _redeemable_value(conn, items, discount, phone, points)
             discount = plain(to_cents(discount or 0) + value)
         invoice = sales_service.checkout(
-            conn, session, items, discount=discount, tax_rate=tax_rate, payment_method=payment_method,
+            conn, session, items, discount=discount, tax_rate=tax_rate,
+            payment_method=cash_method() if credit else payment_method,
             customer_name=customer_name, customer_phone=customer_phone)
-        received, change = payment_amounts(invoice.total_cents, payment_method, tendered)
-        conn.execute("UPDATE invoices SET tendered_cents = ?, change_cents = ?, points_redeemed = ?, "
-                     "points_value_cents = ? WHERE id = ?", (received, change, points, value, invoice.id))
+        if credit:
+            credit_service.convert_to_credit(conn, session, invoice.invoice_no, tendered)
+            conn.execute("UPDATE invoices SET points_redeemed = ?, points_value_cents = ? WHERE id = ?",
+                         (points, value, invoice.id))
+        else:
+            received, change = payment_amounts(invoice.total_cents, payment_method, tendered)
+            conn.execute("UPDATE invoices SET tendered_cents = ?, change_cents = ?, points_redeemed = ?, "
+                         "points_value_cents = ? WHERE id = ?", (received, change, points, value, invoice.id))
         if points:
             conn.execute("UPDATE customers SET loyalty_points = loyalty_points - ? WHERE phone = ?", (points, phone))
             audit.log(conn, session.username,
                       f"Redeemed {points} loyalty point(s) on {invoice.invoice_no} (-{fmt(value)})")
+        if credit:
+            invoice = sales_service.get_invoice(conn, invoice.invoice_no)
     return invoice
 
 
@@ -132,7 +149,8 @@ def list_invoices(conn: sqlite3.Connection, session: Session, query: str = "", d
 
 def void_invoice(conn: sqlite3.Connection, session: Session, invoice_no: str, reason: str) -> None:
     """Cancel a sale: stock goes back, the customer's totals are reversed (points earned are removed, points
-    spent are given back), reports ignore the invoice. Not allowed once any item has been returned."""
+    spent are given back), reports ignore the invoice. Not allowed once any item has been returned.
+    A credit sale's charge is cancelled; money the customer paid at the sale stays on the account as credit."""
     session.require("sales.void")
     reason = reason.strip()
     if len(reason) < 3:
@@ -164,6 +182,7 @@ def void_invoice(conn: sqlite3.Connection, session: Session, invoice_no: str, re
             if invoice["points_redeemed"]:
                 conn.execute("UPDATE customers SET loyalty_points = loyalty_points + ? WHERE phone = ?",
                              (invoice["points_redeemed"], invoice["customer_phone"]))
+        credit_service.on_void(conn, session, invoice["invoice_no"], reason)
         conn.execute("UPDATE invoices SET status = 'Voided', voided_at = ?, voided_by = ?, void_reason = ? "
                      "WHERE id = ?", (timeutil.stamp(), session.username, reason, invoice["id"]))
         audit.log(conn, session.username,

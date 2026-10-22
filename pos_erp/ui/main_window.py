@@ -1,4 +1,4 @@
-"""Main window: dashboard cards + POS, Inventory and (Admin) Dashboard tabs."""
+"""Main window: dashboard cards + POS, Inventory, Register and (Admin) Dashboard tabs."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -9,6 +9,7 @@ from ..money import fmt
 from ..services import lists_service, reporting_service
 from .context import AppContext
 from .dashboard_tab import DashboardTab
+from .dialogs.register_dialogs import RegisterDialog
 from .inventory_tab import InventoryTab
 from .pos_tab import PosTab
 from .widgets import BG, FONT
@@ -37,9 +38,16 @@ class MainWindow:
         inventory_frame = tk.Frame(notebook, bg=BG)
         notebook.add(pos_frame, text="  🛒 POS Billing  ")
         notebook.add(inventory_frame, text="  📦 Inventory  ")
+        register_frame = None
+        if self.ctx.can("sales.create"):
+            register_frame = tk.Frame(notebook, bg=BG)
+            notebook.add(register_frame, text="  💼 Register  ")
 
         self.pos = PosTab(pos_frame, self.ctx)
         self.inventory = InventoryTab(inventory_frame, self.ctx)
+        self.register: RegisterDialog | None = None
+        if register_frame is not None:
+            self.register = RegisterDialog(self.ctx, register_frame)
         self.dashboard: DashboardTab | None = None
         if self.ctx.can("reports.view"):
             dashboard_frame = tk.Frame(notebook, bg=BG)
@@ -63,6 +71,8 @@ class MainWindow:
             self.cards[key].config(text=text)
         self._sync_lists()
         self.inventory.refresh_table()
+        if self.register is not None:
+            self.register.refresh()
         if self.dashboard is not None:
             self.dashboard.refresh()
 

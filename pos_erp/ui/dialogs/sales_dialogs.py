@@ -1,48 +1,61 @@
-"""Receipt window (with print), the return / refund terminal, and the invoices window (reprint + void)."""
+"""Receipt window (print / PDF), the return / refund terminal, and the invoices window (reprint + void)."""
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 
 from ... import config
 from ...money import fmt
-from ...services import print_service, returns_service, settings_service, till_service
-from ...services.receipt import render_receipt
+from ...services import print_engine, returns_service, till_service
 from ...services.sales_service import Invoice
 from ..context import AppContext
 from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, fill_tree,
                        handle_errors, make_tree)
 
 
-def show_receipt(ctx: AppContext, invoice: Invoice, meta=None) -> None:
-    meta = meta if meta is not None else till_service.invoice_meta(ctx.conn, invoice.invoice_no)
-    shop = settings_service.get_all(ctx.conn)
-    text =     text = render_receipt(invoice, shop["shop_name"], shop["receipt_footer"],
-                          tendered_cents=meta["tendered_cents"], change_cents=meta["change_cents"],
-                          voided=meta["status"] == "Voided", points_redeemed=meta["points_redeemed"],
-                          points_value_cents=meta["points_value_cents"])
-    win = tk.Toplevel(ctx.root)
-    win.title("Sales Invoice & Receipt")
-    win.geometry("420x680")
-    win.config(bg=WHITE)
-    tk.Label(win, text=text, font=("Courier", 10), bg=WHITE, fg="#000000", justify="left").pack(padx=10, pady=10)
+class ReceiptWindow:
+    """The receipt on screen, laid out for the paper size in the settings, with Export / Print / Save PDF."""
+
+    def __init__(self, ctx: AppContext, invoice: Invoice, meta) -> None:
+        self.ctx = ctx
+        self.invoice = invoice
+        self.doc = print_engine.prepare_invoice(ctx.conn, invoice, meta)
+        self.win = tk.Toplevel(ctx.root)
+        self.win.title("Sales Invoice & Receipt")
+        self.win.geometry(f"{max(440, self.doc.paper.chars * 9 + 60)}x700")
+        self.win.config(bg=WHITE)
+        tk.Label(self.win, text=self.doc.text, font=("Courier", 10), bg=WHITE, fg="#000000", justify="left").pack(
+            padx=10, pady=10)
+        buttons = tk.Frame(self.win, bg=WHITE)
+        buttons.pack(pady=5)
+        CanvasButton(buttons, "📄 Export", self.export_txt, "#198754", width=100, height=32).pack(side="left", padx=4)
+        CanvasButton(buttons, "🖨 Print", self.print_receipt, "#0d6efd", width=100, height=32).pack(side="left", padx=4)
+        CanvasButton(buttons, "📑 Save PDF", self.save_pdf, "#6f42c1", width=110, height=32).pack(side="left", padx=4)
 
     @handle_errors
-    def export_txt() -> None:
+    def export_txt(self) -> None:
         config.INVOICE_DIR.mkdir(parents=True, exist_ok=True)
-        path = config.INVOICE_DIR / f"Invoice_{invoice.invoice_no}.txt"
-        path.write_text(text, encoding="utf-8")
+        path = config.INVOICE_DIR / f"{self.doc.name}.txt"
+        path.write_text(self.doc.text, encoding="utf-8")
         messagebox.showinfo("Export Successful", f"Invoice saved as {path}")
 
     @handle_errors
-    def print_receipt() -> None:
-        print_service.print_text(text)
+    def print_receipt(self) -> None:
+        print_engine.print_document(self.doc)
         messagebox.showinfo("Printing", "The receipt was sent to the printer.")
 
-    buttons = tk.Frame(win, bg=WHITE)
-    buttons.pack(pady=5)
-    CanvasButton(buttons, "📄 Export Invoice", export_txt, "#198754", width=140, height=32).pack(side="left", padx=5)
-    CanvasButton(buttons, "🖨 Print", print_receipt, "#0d6efd", width=100, height=32).pack(side="left", padx=5)
+    @handle_errors
+    def save_pdf(self) -> None:
+        path = filedialog.asksaveasfilename(parent=self.win, defaultextension=".pdf", initialfile=f"{self.doc.name}.pdf",
+                                            filetypes=[("PDF", "*.pdf")])
+        if path:
+            print_engine.save_pdf(self.doc, path)
+            messagebox.showinfo("Saved", f"Receipt saved as {path}")
+
+
+def show_receipt(ctx: AppContext, invoice: Invoice, meta=None) -> ReceiptWindow:
+    meta = meta if meta is not None else till_service.invoice_meta(ctx.conn, invoice.invoice_no)
+    return ReceiptWindow(ctx, invoice, meta)
 
 
 def _ask_reason(parent, title: str, warning: str, on_submit) -> None:
@@ -184,7 +197,11 @@ def open_returns(ctx: AppContext) -> None:
             ctx.conn, ctx.session, invoice_entry.get(), entries["Product ID"].get(), entries["Return Qty"].get(),
             entries["Reason"].get(), restock.get())
         tail = " and stock updated successfully!" if result.restocked else ". Stock was not changed."
-        messagebox.showinfo("Success", f"Item refunded ({fmt(result.refund_cents)}){tail}")
+        if result.to_account:
+            messagebox.showinfo("Success", f"{fmt(result.refund_cents)} was taken off the customer's account "
+                                           f"(credit sale, no cash to give back){tail}")
+        else:
+            messagebox.showinfo("Success", f"Item refunded ({fmt(result.refund_cents)}){tail}")
         ctx.refresh()
         win.destroy()
 

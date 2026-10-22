@@ -1,5 +1,5 @@
 # Changelog
-## 2.6.0 (in progress)
+## 2.6.0
 
 ### Added
 - Receipt engine: 58 mm, 80 mm and A4 layouts, business address and phone, raw ESC/POS to thermal printers

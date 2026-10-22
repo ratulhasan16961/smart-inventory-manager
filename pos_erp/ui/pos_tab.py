@@ -1,4 +1,4 @@
-"""POS Billing tab: customer lookup + loyalty points, live cart table, cash received / change due, checkout."""
+"""POS Billing tab: customer lookup + loyalty points, credit (baki), live cart, cash received / change due, checkout."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -7,9 +7,11 @@ from tkinter import messagebox, ttk
 from .. import config
 from ..errors import POSError, ValidationError
 from ..money import fmt, plain, to_cents
-from ..services import customer_service, inventory_service, sales_service, settings_service, till_service
+from ..services import (credit_service, customer_service, inventory_service, sales_service, settings_service,
+                        till_service)
 from .context import AppContext
 from .dialogs.customer_dialogs import open_customer_history
+from .dialogs.ledger_dialogs import open_customer_ledger
 from .dialogs.sales_dialogs import open_invoices, show_receipt
 from .widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, handle_errors,
                       make_tree)
@@ -21,8 +23,9 @@ LOOKUP_HINT = "Enter a phone number and press Lookup to see loyalty points."
 class PosTab:
     def __init__(self, parent: tk.Frame, ctx: AppContext) -> None:
         self.ctx = ctx
-        self.cart: list[dict] = []  # display only; prices are re-read from the DB at checkout
+        self.cart: list[dict] = []
         self._total_cents: int | None = None
+        self._mode = "cash"
         self._build_billing(parent)
         self._build_cart(parent)
         self.render_cart()
@@ -31,9 +34,12 @@ class PosTab:
         frame = tk.LabelFrame(parent, text=" Customer Billing & POS Multi-Item Cart ", bg=WHITE, fg="#0d6efd",
                               font=(FONT, 10, "bold"), bd=1, relief="solid")
         frame.pack(fill="x", padx=5, pady=5)
+        labels: dict[tuple[int, int], tk.Label] = {}
 
         def field(caption: str, row: int, column: int, width: int, **grid):
-            tk.Label(frame, text=caption, **LABEL_STYLE).grid(row=row, column=column, padx=4, pady=6, sticky="e")
+            label = tk.Label(frame, text=caption, **LABEL_STYLE)
+            label.grid(row=row, column=column, padx=4, pady=6, sticky="e")
+            labels[(row, column)] = label
             container, entry = create_styled_entry(frame, width=width)
             container.grid(row=row, column=column + 1, padx=4, pady=6, **grid)
             return entry
@@ -47,8 +53,8 @@ class PosTab:
         self.disc_e.insert(0, "0")
         self.tax_e.insert(0, settings_service.get(self.ctx.conn, "default_tax_rate"))
         tk.Label(frame, text="Payment:", **LABEL_STYLE).grid(row=0, column=9, padx=4, pady=6, sticky="e")
-        self.pay_combo = ttk.Combobox(frame, values=list(config.PAYMENT_METHODS), width=14, font=(FONT, 9),
-                                      state="readonly")
+        self.pay_combo = ttk.Combobox(frame, values=list(credit_service.sale_methods(self.ctx.session)), width=14,
+                                      font=(FONT, 9), state="readonly")
         self.pay_combo.grid(row=0, column=10, padx=4, pady=6)
         self.pay_combo.set(config.PAYMENT_METHODS[0])
 
@@ -58,15 +64,19 @@ class PosTab:
         lookup.grid(row=1, column=4, padx=6, pady=6)
         lookup.set_enabled(self.ctx.can("customers.lookup"))
         self.received_e = field(f"Received ({config.CURRENCY_SYMBOL}):", 1, 5, 9)
+        self.lbl_received = labels[(1, 5)]
         self.lbl_change = tk.Label(frame, text="", bg=WHITE, fg=MUTED, font=(FONT, 10, "bold"))
         self.lbl_change.grid(row=1, column=7, columnspan=4, padx=6, sticky="w")
 
         self.points_e = field("Use points:", 2, 0, 8)
         self.lbl_loyalty = tk.Label(frame, text=LOOKUP_HINT, bg=WHITE, fg=MUTED, font=(FONT, 10))
-        self.lbl_loyalty.grid(row=2, column=2, columnspan=8, padx=6, sticky="w")
+        self.lbl_loyalty.grid(row=2, column=2, columnspan=7, padx=6, sticky="w")
         history = CanvasButton(frame, "📜 History", self.show_history, "#6c757d", width=90, height=28)
-        history.grid(row=2, column=10, padx=6, pady=6)
+        history.grid(row=2, column=9, padx=4, pady=6)
         history.set_enabled(self.ctx.can("customers.lookup"))
+        ledger = CanvasButton(frame, "📒 Ledger", self.show_ledger, "#b02a37", width=90, height=28)
+        ledger.grid(row=2, column=10, padx=4, pady=6)
+        ledger.set_enabled(self.ctx.can(credit_service.PERM_VIEW))
 
         self.prod_id_e.bind("<Return>", self.add_to_cart)
         self.prod_qty_e.bind("<Return>", self.add_to_cart)
@@ -136,12 +146,22 @@ class PosTab:
         if not self.cust_name_e.get().strip():
             self.cust_name_e.insert(0, info.name)
         value = fmt(customer_service.points_value(info.points))
+        balance = credit_service.balance_of_phone(self.ctx.conn, info.phone) if self.ctx.can(
+            credit_service.PERM_VIEW) else 0
+        account = ""
+        if balance > 0:
+            account = f"  |  OWES {fmt(balance)}"
+        elif balance < 0:
+            account = f"  |  credit {fmt(-balance)}"
         self.lbl_loyalty.config(
             text=f"{info.name}: {info.points} points (worth {value})  |  spent {fmt(info.spent_cents)}  |  "
-                 f"{info.visits} visit(s)", fg="#198754")
+                 f"{info.visits} visit(s){account}", fg="#dc3545" if balance > 0 else "#198754")
 
     def show_history(self) -> None:
         open_customer_history(self.ctx, self.cust_phone_e.get())
+
+    def show_ledger(self) -> None:
+        open_customer_ledger(self.ctx, self.cust_phone_e.get())
 
     def focus_barcode(self) -> None:
         self.prod_id_e.focus_set()
@@ -185,15 +205,40 @@ class PosTab:
     def _cash(self) -> bool:
         return self.pay_combo.get() == till_service.cash_method()
 
+    def _credit(self) -> bool:
+        return self.pay_combo.get() == credit_service.CREDIT_METHOD
+
     def _on_payment_change(self) -> None:
-        cash = self._cash()
+        cash, credit = self._cash(), self._credit()
+        mode = "credit" if credit else ("cash" if cash else "other")
         self.received_e.config(state="normal")
-        if not cash:
+        if mode != self._mode or mode == "other":
             self.received_e.delete(0, tk.END)
-        self.received_e.config(state="normal" if cash else "disabled")
+        self._mode = mode
+        self.received_e.config(state="normal" if (cash or credit) else "disabled")
+        self.lbl_received.config(text=f"{'Paid now' if credit else 'Received'} ({config.CURRENCY_SYMBOL}):")
         self._update_change()
 
+    def _update_credit_hint(self) -> None:
+        if self._total_cents is None:
+            self.lbl_change.config(text="On credit: add items first", fg=MUTED)
+            return
+        text = self.received_e.get().strip()
+        try:
+            paid = to_cents(text) if text else 0
+        except ValueError:
+            self.lbl_change.config(text="Paid-now amount is not a number", fg="#dc3545")
+            return
+        if paid < 0 or paid > self._total_cents:
+            self.lbl_change.config(text=f"Paid now must be between {fmt(0)} and {fmt(self._total_cents)}", fg="#dc3545")
+            return
+        due = self._total_cents - paid
+        self.lbl_change.config(text=f"On credit: {fmt(due)}", fg="#dc3545" if due else "#198754")
+
     def _update_change(self) -> None:
+        if self._credit():
+            self._update_credit_hint()
+            return
         if not self._cash():
             self.lbl_change.config(text="Change: not needed (not cash)", fg=MUTED)
             return
@@ -261,17 +306,18 @@ class PosTab:
         if not self.cart:
             messagebox.showwarning("Warning", "Cart is empty! Add products to cart first.")
             return
+        uses_received = self._cash() or self._credit()
         invoice = till_service.checkout_with_payment(
             self.ctx.conn, self.ctx.session, self._items(), self.disc_e.get(), self.tax_e.get(),
             self.pay_combo.get(), self.cust_name_e.get(), self.cust_phone_e.get(),
-            tendered=self.received_e.get() if self._cash() else None, redeem_points=self._points())
+            tendered=self.received_e.get() if uses_received else None, redeem_points=self._points())
         self.cart.clear()
         for entry in (self.cust_name_e, self.cust_phone_e, self.points_e):
             entry.delete(0, tk.END)
         self.lbl_loyalty.config(text=LOOKUP_HINT, fg=MUTED)
         self.disc_e.delete(0, tk.END)
         self.disc_e.insert(0, "0")
-        if self._cash():
+        if uses_received:
             self.received_e.delete(0, tk.END)
         self.render_cart()
         self.ctx.refresh()

@@ -9,7 +9,7 @@ from ..db.connection import transaction
 from ..errors import NotFoundError, ValidationError
 from ..money import fmt
 from ..permissions import Session
-from . import audit, stock_service
+from . import audit, credit_service, stock_service
 
 VOIDED = "This invoice was voided, so nothing can be returned from it."
 
@@ -19,6 +19,7 @@ class ReturnResult:
     return_id: int
     refund_cents: int
     restocked: bool
+    to_account: bool = False
 
 
 def invoice_lines(conn: sqlite3.Connection, session: Session, invoice_no: str) -> list[sqlite3.Row]:
@@ -62,7 +63,6 @@ def process_return(conn: sqlite3.Connection, session: Session, invoice_no: str, 
         if quantity > remaining:
             raise ValidationError(f"Only {remaining} unit(s) can still be returned for this item "
                                   f"(sold {item['quantity']}, already returned {done['qty']}).")
-        # Cumulative proportional refund: returning everything refunds exactly the line total.
         cumulative = (item["line_total_cents"] * (done["qty"] + quantity) * 2 + item["quantity"]) // (2 * item["quantity"])
         refund = cumulative - done["cents"]
 
@@ -79,7 +79,9 @@ def process_return(conn: sqlite3.Connection, session: Session, invoice_no: str, 
                 """UPDATE customers SET total_spent_cents = MAX(total_spent_cents - ?, 0),
                           loyalty_points = MAX(loyalty_points - ?, 0) WHERE phone = ?""",
                 (refund, refund // config.LOYALTY_CENTS_PER_POINT, item["customer_phone"]))
+        to_account = credit_service.on_return(conn, session, invoice_no.strip(), refund)
         audit.log(conn, session.username,
                   f"Processed Refund for Invoice: {invoice_no.strip()}, Product ID: {product_id}, "
-                  f"Qty: {quantity}, Amount: {fmt(refund)}" + ("" if restock else " (not restocked)"))
-    return ReturnResult(return_id, refund, restock)
+                  f"Qty: {quantity}, Amount: {fmt(refund)}" + ("" if restock else " (not restocked)")
+                  + (" (credited to the customer's account)" if to_account else ""))
+    return ReturnResult(return_id, refund, restock, to_account)

@@ -1,4 +1,6 @@
-"""Register & Shift window: open/close a shift, live cash summary, today's expenses, shift history."""
+"""Register & Shift: open/close a shift, live cash summary, today's expenses, shift history.
+
+RegisterDialog(ctx) opens its own window; RegisterDialog(ctx, parent_frame) fills a tab of the main window."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -16,18 +18,22 @@ GREEN, RED, MUTED = "#198754", "#dc3545", "#6c757d"
 
 
 class RegisterDialog:
-    def __init__(self, ctx: AppContext) -> None:
+    def __init__(self, ctx: AppContext, parent=None) -> None:
         self.ctx = ctx
-        self.win = tk.Toplevel(ctx.root)
-        self.win.title("Register & Shift")
-        self.win.geometry("820x760")
-        self.win.config(bg=WHITE)
-        self.status = tk.Label(self.win, text="", bg=WHITE, font=(FONT, 13, "bold"))
+        if parent is None:
+            self.win = tk.Toplevel(ctx.root)
+            self.win.title("Register & Shift")
+            self.win.geometry("820x760")
+            host = self.win
+        else:
+            self.win = parent.winfo_toplevel()
+            host = parent
+        host.config(bg=WHITE)
+        self.status = tk.Label(host, text="", bg=WHITE, font=(FONT, 13, "bold"))
         self.status.pack(pady=(12, 4))
-        self.report = tk.Label(self.win, text="", bg=WHITE, fg=DARK, font=("Courier", 11), justify="left",
-                               anchor="nw")
+        self.report = tk.Label(host, text="", bg=WHITE, fg=DARK, font=("Courier", 11), justify="left", anchor="nw")
         self.report.pack(padx=20, anchor="w")
-        bar = tk.Frame(self.win, bg=WHITE)
+        bar = tk.Frame(host, bg=WHITE)
         bar.pack(pady=10)
         self.buttons = {}
         for key, text, command, color in (
@@ -36,7 +42,7 @@ class RegisterDialog:
                 ("print", "🖨 Print summary", self.print_summary, "#0d6efd")):
             self.buttons[key] = CanvasButton(bar, text, command, color, width=150, height=30)
             self.buttons[key].pack(side="left", padx=4)
-        bar2 = tk.Frame(self.win, bg=WHITE)
+        bar2 = tk.Frame(host, bg=WHITE)
         bar2.pack()
         for key, text, command, color in (
                 ("dues", "📒 Customer dues", lambda: open_receivables(ctx), "#b02a37"),
@@ -44,8 +50,8 @@ class RegisterDialog:
                 ("history", "🕘 Shift history", lambda: open_shift_history(ctx), MUTED)):
             self.buttons[key] = CanvasButton(bar2, text, command, color, width=170, height=28)
             self.buttons[key].pack(side="left", padx=4, pady=4)
-        tk.Label(self.win, text="Today's expenses", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack(pady=(10, 0))
-        box, self.tree = make_tree(self.win, ("Time", "Category", "Amount", "Paid from", "Note", "By"),
+        tk.Label(host, text="Today's expenses", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack(pady=(10, 0))
+        box, self.tree = make_tree(host, ("Time", "Category", "Amount", "Paid from", "Note", "By"),
                                    (70, 130, 90, 90, 280, 90))
         box.pack(fill="both", expand=True, padx=15, pady=8)
         self.refresh()
