@@ -13,6 +13,7 @@ from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styl
 from .email_dialogs import open_account_email
 from .recovery_dialogs import open_recovery_key
 from .ledger_dialogs import open_receivables
+from .register_dialogs import open_register
 from .receipt_dialogs import open_receipt_settings
 from .system_dialogs import open_backup_restore, open_manage_lists, open_shop_settings, open_user_management
 
@@ -84,7 +85,7 @@ def open_customers(ctx: AppContext) -> None:
 def open_settings(ctx: AppContext) -> None:
     win = tk.Toplevel(ctx.root)
     win.title("Settings & Maintenance")
-    win.geometry("380x880")
+    win.geometry("380x920")
     win.config(bg=WHITE)
     tk.Label(win, text="Update Security Settings", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack(pady=8)
     tk.Label(win, text="Username:", **LABEL_STYLE).pack()
@@ -121,6 +122,9 @@ def open_settings(ctx: AppContext) -> None:
     dues_button = CanvasButton(win, "📒 Customer Dues", lambda: open_receivables(ctx), "#b02a37", width=190, height=30)
     dues_button.pack(pady=4)
     dues_button.set_enabled(ctx.can("customers.lookup"))
+    register_button = CanvasButton(win, "💼 Register & Shift", lambda: open_register(ctx), "#198754", width=190, height=30)
+    register_button.pack(pady=4)
+    register_button.set_enabled(ctx.can("sales.create"))
 
     tk.Frame(win, height=1, bg="#cccccc").pack(fill="x", padx=15, pady=8)
     tk.Label(win, text="Administration", bg=WHITE, fg=DARK, font=(FONT, 11, "bold")).pack()

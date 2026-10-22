@@ -1,0 +1,43 @@
+name: Release builds
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: EnterprisePOS-windows.zip
+          - os: macos-latest
+            artifact: EnterprisePOS-macos.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip pyinstaller
+      - run: pyinstaller --clean --noconfirm pos_erp.spec
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/EnterprisePOS.exe -DestinationPath EnterprisePOS-windows.zip
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: hdiutil create -volname "Enterprise POS" -srcfolder dist/EnterprisePOS.app -ov -format UDZO EnterprisePOS-macos.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ matrix.artifact }}

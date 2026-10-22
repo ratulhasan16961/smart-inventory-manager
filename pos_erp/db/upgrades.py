@@ -105,6 +105,40 @@ def _upgrade_v7(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_ledger_created ON customer_ledger (created_at)")
 
 
+
+def _upgrade_v8(conn: sqlite3.Connection) -> None:
+    """Daily expenses and register shifts (opening float, counted drawer, stored summary)."""
+    conn.execute("""CREATE TABLE expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_date TEXT NOT NULL,
+        category TEXT NOT NULL CHECK (length(trim(category)) > 0),
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        note TEXT NOT NULL DEFAULT '',
+        paid_from TEXT NOT NULL DEFAULT 'Cash' CHECK (paid_from IN ('Cash', 'Other')),
+        username TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        is_void INTEGER NOT NULL DEFAULT 0 CHECK (is_void IN (0, 1)),
+        void_reason TEXT NOT NULL DEFAULT '',
+        voided_by TEXT
+    )""")
+    conn.execute("CREATE INDEX idx_expenses_date ON expenses (expense_date)")
+    conn.execute("""CREATE TABLE shifts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        status TEXT NOT NULL DEFAULT 'Open' CHECK (status IN ('Open', 'Closed')),
+        opened_by TEXT NOT NULL,
+        opened_at TEXT NOT NULL,
+        opening_cash_cents INTEGER NOT NULL CHECK (opening_cash_cents >= 0),
+        closed_by TEXT,
+        closed_at TEXT,
+        counted_cash_cents INTEGER,
+        expected_cash_cents INTEGER,
+        variance_cents INTEGER,
+        note TEXT NOT NULL DEFAULT '',
+        summary_json TEXT
+    )""")
+    conn.execute("CREATE UNIQUE INDEX idx_shifts_single_open ON shifts (status) WHERE status = 'Open'")
+
+
 UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {
     2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5, 6: _upgrade_v6, 7: _upgrade_v7}
 LATEST_VERSION = max(UPGRADES)

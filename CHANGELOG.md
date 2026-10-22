@@ -1,4 +1,15 @@
 # Changelog
+## 2.6.0 (in progress)
+
+### Added
+- Receipt engine: 58 mm, 80 mm and A4 layouts, business address and phone, raw ESC/POS to thermal printers
+  (network, raw print queue or device path), PDF export, test page (Settings > Receipt & Printer).
+- Customer credit (baki): per-customer ledger, payments, credit limit, adjustments, CSV export, Customer Dues list.
+- Daily expenses and register shifts: opening float, live cash summary (cash sales, card/digital, credit, refunds,
+  expenses), closing count with the difference, shift history and printable summary.
+- Standalone packaging: `pos_erp.spec`, per-user data folder, GitHub workflow that builds `.exe` and `.dmg`.
+- Database upgrades v7 (credit ledger) and v8 (expenses, shifts).
+
 ## 2.5.0
 
 ### Added

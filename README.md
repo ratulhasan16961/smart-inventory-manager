@@ -72,8 +72,9 @@ Requirements: Python 3.10+ with Tkinter (included with the python.org installers
 
 ## Email setup (optional): password reset codes
 
-"Forgot password?" can email a one-time code to the address registered on the account (Settings > Account Email,
-verified with a code first). Sending needs a mail account. With Gmail:
+Forgot your password? Reset it from the login screen with an emailed one-time code (sent to the address you verified
+in Settings > Account Email) or with your one-time recovery key; an administrator can reset a cashier; the owner can
+run `python3 -m scripts.reset_password` on the computer that holds the database
 
 1. Turn on 2-Step Verification, then create an **App Password** (Google Account > Security > App passwords).
 2. Create `mail.env` next to `inventory_app.py` (it is git-ignored; `chmod 600 mail.env`):
