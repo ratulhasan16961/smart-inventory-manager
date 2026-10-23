@@ -12,7 +12,7 @@ from ..db.schema import SCHEMA_VERSION
 from ..db.upgrades import apply_upgrades
 from ..errors import ValidationError
 from ..permissions import Session
-from . import audit, stock_service
+from . import audit, mirror_service, stock_service
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ def auto_backup(conn: sqlite3.Connection, backup_dir: str | Path, keep: int = 20
     folder = Path(backup_dir)
     dest = _write_backup(conn, folder / f"backup_{timeutil.now():%Y%m%d_%H%M%S}.db")
     prune(folder, keep)
+    mirror_service.copy_to_mirror(conn, dest)
     return dest
 
 

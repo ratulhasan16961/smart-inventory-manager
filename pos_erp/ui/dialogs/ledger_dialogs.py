@@ -1,13 +1,14 @@
-"""Customer credit (due): one customer's ledger, and the list of everyone who owes money."""
+"""Customer credit (baki): one customer's ledger, and the list of everyone who owes money."""
 from __future__ import annotations
 
 import tkinter as tk
+import webbrowser
 from tkinter import filedialog, messagebox, ttk
 
 from ... import config
 from ...errors import POSError
 from ...money import fmt
-from ...services import credit_service
+from ...services import credit_service, print_output, reminder_service
 from ..context import AppContext
 from ..widgets import (DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, fill_tree,
                        handle_errors, make_tree)
@@ -54,7 +55,7 @@ class CustomerLedgerDialog:
         self.phone = phone.strip()
         self.win = tk.Toplevel(ctx.root)
         self.win.title("Customer Ledger")
-        self.win.geometry("1000x620")
+        self.win.geometry("1080x620")
         self.win.config(bg=WHITE)
         self.title = tk.Label(self.win, text="", bg=WHITE, fg=DARK, font=(FONT, 14, "bold"))
         self.title.pack(pady=(12, 2))
@@ -66,11 +67,13 @@ class CustomerLedgerDialog:
         bar.pack(pady=8)
         for text, command, color, permission in (
                 ("💵 Receive payment", self.receive, GREEN, credit_service.PERM_COLLECT),
+                ("💬 WhatsApp reminder", self.whatsapp, "#25a244", credit_service.PERM_VIEW),
+                ("📄 Statement PDF", self.statement_pdf, "#0d6efd", credit_service.PERM_VIEW),
                 ("✏ Adjust / write off", self.adjust, "#fd7e14", credit_service.PERM_MANAGE),
                 ("🔒 Credit limit", self.set_limit, "#6f42c1", credit_service.PERM_MANAGE),
-                ("⬇ Export CSV", self.export, "#0d6efd", credit_service.PERM_VIEW)):
-            button = CanvasButton(bar, text, command, color, width=170, height=30)
-            button.pack(side="left", padx=4)
+                ("⬇ Export CSV", self.export, MUTED, credit_service.PERM_VIEW)):
+            button = CanvasButton(bar, text, command, color, width=165, height=30)
+            button.pack(side="left", padx=3)
             button.set_enabled(ctx.can(permission))
         box, self.tree = make_tree(self.win, ("When", "Type", "Amount", "Balance", "Invoice", "Method", "Note", "User"),
                                    (140, 100, 100, 100, 150, 90, 230, 80))
@@ -102,6 +105,24 @@ class CustomerLedgerDialog:
         ask_values(self.win, "Receive payment", [("amount", "Amount received"), ("method", "Paid by"),
                                                  ("note", "Note (optional)")], "Record payment", submit,
                    {"method": list(config.PAYMENT_METHODS)})
+
+    @handle_errors
+    def whatsapp(self) -> None:
+        url, text = reminder_service.whatsapp_url(self.ctx.conn, self.ctx.session, self.phone)
+        self.win.clipboard_clear()
+        self.win.clipboard_append(text)
+        webbrowser.open(url)
+        messagebox.showinfo("WhatsApp", "WhatsApp is opening with the reminder message.\n"
+                                        "The message was also copied to the clipboard.", parent=self.win)
+
+    @handle_errors
+    def statement_pdf(self) -> None:
+        lines = reminder_service.statement_lines(self.ctx.conn, self.ctx.session, self.phone)
+        path = filedialog.asksaveasfilename(parent=self.win, defaultextension=".pdf",
+                                            initialfile=f"statement_{self.phone}.pdf", filetypes=[("PDF", "*.pdf")])
+        if path:
+            print_output.save_pdf("\n".join(lines), "A4", path)
+            messagebox.showinfo("Saved", f"Statement saved to {path}", parent=self.win)
 
     def adjust(self) -> None:
         def submit(values):

@@ -1,4 +1,4 @@
-"""Business profile beyond the basic shop settings: address, phone, receipt paper and thermal printer target."""
+"""Business profile beyond the basic shop settings: receipt layout, backup copy, reminders, daily summary."""
 from __future__ import annotations
 
 import re
@@ -7,16 +7,24 @@ import sqlite3
 from ..db.connection import transaction
 from ..errors import ValidationError
 from ..permissions import Session
-from . import audit, thermal
+from . import audit, email_service, thermal
 
-DEFAULTS = {"shop_address": "", "shop_phone": "", "receipt_paper": thermal.DEFAULT_PAPER, "printer_target": ""}
-LIMITS = {"shop_address": 120, "shop_phone": 30, "printer_target": 200}
+DEFAULT_REMINDER = ("Hello {name}, this is a friendly reminder from {shop}: your account balance due is {amount}. "
+                    "Thank you!")
+DEFAULTS = {
+    "shop_address": "", "shop_phone": "", "receipt_paper": thermal.DEFAULT_PAPER, "printer_target": "",
+    "country_code": "", "reminder_template": DEFAULT_REMINDER, "backup_mirror_dir": "", "backup_mirror_keep": "30",
+    "digest_email": "", "digest_auto": "No",
+}
+LIMITS = {"shop_address": 120, "shop_phone": 30, "printer_target": 200, "reminder_template": 300,
+          "backup_mirror_dir": 300}
 _TCP = re.compile(r"^tcp://[A-Za-z0-9._-]+(:\d{1,5})?$")
 
 
 def get_profile(conn: sqlite3.Connection) -> dict[str, str]:
     values = dict(DEFAULTS)
-    for row in conn.execute("SELECT key, value FROM settings WHERE key IN (?, ?, ?, ?)", tuple(DEFAULTS)):
+    marks = ", ".join("?" for _ in DEFAULTS)
+    for row in conn.execute(f"SELECT key, value FROM settings WHERE key IN ({marks})", tuple(DEFAULTS)):
         values[row["key"]] = row["value"]
     return values
 
@@ -44,15 +52,31 @@ def validate(values: dict) -> dict[str, str]:
         raise ValidationError("Write the printer queue name after lp: (for example lp:POS80).")
     if "\n" in target:
         raise ValidationError("The printer target must be one line.")
+    if not re.fullmatch(r"\d{0,4}", clean["country_code"]):
+        raise ValidationError("Country code must be digits only, like 880.")
+    if not clean["reminder_template"]:
+        clean["reminder_template"] = DEFAULT_REMINDER
+    try:
+        clean["reminder_template"].format(name="x", amount="1", shop="y")
+    except (KeyError, IndexError, ValueError):
+        raise ValidationError("The reminder message can only use {name}, {amount} and {shop}.") from None
+    keep = clean["backup_mirror_keep"]
+    if not keep.isdigit() or not 1 <= int(keep) <= 365:
+        raise ValidationError("Keep between 1 and 365 backup copies.")
+    if clean["digest_email"]:
+        clean["digest_email"] = email_service.validate_email(clean["digest_email"])
+    if clean["digest_auto"] not in ("Yes", "No"):
+        raise ValidationError("Automatic summary must be Yes or No.")
     return clean
 
 
 def update_profile(conn: sqlite3.Connection, session: Session, values: dict) -> dict[str, str]:
+    """Only the keys you pass change; every other setting keeps its stored value."""
     session.require("settings.manage")
-    clean = validate(values)
+    clean = validate({**get_profile(conn), **values})
     with transaction(conn):
         for key, value in clean.items():
             conn.execute("INSERT INTO settings (key, value) VALUES (?, ?) "
                          "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, value))
-        audit.log(conn, session.username, "Updated receipt and printer settings")
+        audit.log(conn, session.username, "Updated business, backup and reminder settings")
     return clean

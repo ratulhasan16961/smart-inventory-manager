@@ -6,13 +6,15 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import messagebox
 
+from ...errors import POSError
 from ...money import fmt
-from ...services import (business_service, credit_service, expense_service, print_output, shift_report,
-                         shift_service, thermal)
+from ...services import (business_service, credit_service, digest_service, expense_service, print_output,
+                         shift_report, shift_service, thermal)
 from ..context import AppContext
 from ..widgets import DARK, FONT, WHITE, CanvasButton, fill_tree, handle_errors, make_tree
 from .expense_dialogs import open_expenses
 from .ledger_dialogs import ask_values, open_receivables
+from .profit_dialogs import open_profit
 
 GREEN, RED, MUTED = "#198754", "#dc3545", "#6c757d"
 
@@ -23,7 +25,7 @@ class RegisterDialog:
         if parent is None:
             self.win = tk.Toplevel(ctx.root)
             self.win.title("Register & Shift")
-            self.win.geometry("820x760")
+            self.win.geometry("900x760")
             host = self.win
         else:
             self.win = parent.winfo_toplevel()
@@ -47,6 +49,7 @@ class RegisterDialog:
         for key, text, command, color in (
                 ("dues", "📒 Customer dues", lambda: open_receivables(ctx), "#b02a37"),
                 ("expenses", "📊 Expenses report", lambda: open_expenses(ctx), "#6f42c1"),
+                ("profit", "💹 Net profit", lambda: open_profit(ctx), "#0b7285"),
                 ("history", "🕘 Shift history", lambda: open_shift_history(ctx), MUTED)):
             self.buttons[key] = CanvasButton(bar2, text, command, color, width=170, height=28)
             self.buttons[key].pack(side="left", padx=4, pady=4)
@@ -78,6 +81,7 @@ class RegisterDialog:
         self.buttons["expense"].set_enabled(self.ctx.can(expense_service.PERM_ADD))
         self.buttons["dues"].set_enabled(self.ctx.can(credit_service.PERM_VIEW))
         self.buttons["expenses"].set_enabled(manage)
+        self.buttons["profit"].set_enabled(manage)
         self.buttons["history"].set_enabled(manage)
         rows = expense_service.list_expenses(conn, session)
         fill_tree(self.tree, [(r["created_at"][11:16], r["category"], fmt(r["amount_cents"]), r["paid_from"],
@@ -97,10 +101,21 @@ class RegisterDialog:
             verdict = "balanced" if diff == 0 else (f"{fmt(diff)} over" if diff > 0 else f"{fmt(-diff)} short")
             messagebox.showinfo("Shift closed", f"Expected {fmt(row['expected_cash_cents'])}, counted "
                                                 f"{fmt(row['counted_cash_cents'])}: {verdict}.", parent=self.win)
+            self._auto_digest()
             if messagebox.askyesno("Print summary", "Print the shift summary?", parent=self.win):
                 self._print(row, shift_service.summary_of(self.ctx.conn, row))
         ask_values(self.win, "Close shift", [("counted", "Cash counted in the drawer"), ("note", "Note (optional)")],
                    "Close shift", submit)
+
+    def _auto_digest(self) -> None:
+        """Email the daily summary to the owner when 'send automatically' is on (Settings > Backup & Reminders)."""
+        try:
+            address = digest_service.send_after_close(self.ctx.conn)
+        except POSError as exc:
+            messagebox.showwarning("Daily summary", f"The daily summary could not be sent: {exc}", parent=self.win)
+            return
+        if address:
+            messagebox.showinfo("Daily summary", f"The daily summary was sent to {address}.", parent=self.win)
 
     def add_expense(self) -> None:
         def submit(values):
