@@ -77,6 +77,8 @@ class PosTab:
         ledger = CanvasButton(frame, "📒 Ledger", self.show_ledger, "#b02a37", width=90, height=28)
         ledger.grid(row=2, column=10, padx=4, pady=6)
         ledger.set_enabled(self.ctx.can(credit_service.PERM_VIEW))
+        self.ref_e = field("Payment ref (txn ID):", 3, 0, 22)
+        self.ref_e.config(state="disabled")
 
         self.prod_id_e.bind("<Return>", self.add_to_cart)
         self.prod_qty_e.bind("<Return>", self.add_to_cart)
@@ -217,6 +219,11 @@ class PosTab:
         self._mode = mode
         self.received_e.config(state="normal" if (cash or credit) else "disabled")
         self.lbl_received.config(text=f"{'Paid now' if credit else 'Received'} ({config.CURRENCY_SYMBOL}):")
+        uses_ref = not (cash or credit)
+        self.ref_e.config(state="normal")
+        if not uses_ref:
+            self.ref_e.delete(0, tk.END)
+        self.ref_e.config(state="normal" if uses_ref else "disabled")
         self._update_change()
 
     def _update_credit_hint(self) -> None:
@@ -310,7 +317,8 @@ class PosTab:
         invoice = till_service.checkout_with_payment(
             self.ctx.conn, self.ctx.session, self._items(), self.disc_e.get(), self.tax_e.get(),
             self.pay_combo.get(), self.cust_name_e.get(), self.cust_phone_e.get(),
-            tendered=self.received_e.get() if uses_received else None, redeem_points=self._points())
+            tendered=self.received_e.get() if uses_received else None, redeem_points=self._points(),
+            payment_ref=self.ref_e.get())
         self.cart.clear()
         for entry in (self.cust_name_e, self.cust_phone_e, self.points_e):
             entry.delete(0, tk.END)
@@ -319,6 +327,9 @@ class PosTab:
         self.disc_e.insert(0, "0")
         if uses_received:
             self.received_e.delete(0, tk.END)
+        self.ref_e.config(state="normal")
+        self.ref_e.delete(0, tk.END)
+        self._on_payment_change()
         self.render_cart()
         self.ctx.refresh()
         show_receipt(self.ctx, invoice)

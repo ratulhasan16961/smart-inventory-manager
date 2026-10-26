@@ -32,7 +32,6 @@ def _upgrade_v2(conn: sqlite3.Connection) -> None:
                                     ("warehouses", "warehouse", DEFAULT_WAREHOUSES)):
         conn.execute(_LIST_TABLE.format(table=table))
         conn.executemany(f"INSERT OR IGNORE INTO {table} (name) VALUES (?)", [(name,) for name in defaults])
-        # keep every value the existing products already use
         conn.execute(f"INSERT OR IGNORE INTO {table} (name) SELECT DISTINCT trim({column}) FROM products "
                      f"WHERE trim({column}) <> ''")
     conn.execute("UPDATE products SET expiry = substr(expiry, 1, 5) || '0' || substr(expiry, 6) "
@@ -138,9 +137,46 @@ def _upgrade_v8(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE UNIQUE INDEX idx_shifts_single_open ON shifts (status) WHERE status = 'Open'")
 
 
+def _upgrade_v9(conn: sqlite3.Connection) -> None:
+    """Manager role. SQLite cannot change a CHECK constraint in place, so the users table is rebuilt (every column,
+    row and id is copied). The only table that points at users (email_codes) is emptied while the old table is
+    dropped and refilled afterwards, because SQLite counts the dropped parent rows as foreign-key violations."""
+    code_columns = "id, user_id, purpose, email, code_hash, created_at, expires_at, attempts, used"
+    conn.execute(f"CREATE TEMP TABLE _saved_email_codes AS SELECT {code_columns} FROM email_codes")
+    conn.execute("DELETE FROM email_codes")
+    conn.execute("""CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('Admin', 'Manager', 'Cashier')),
+        is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+        must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1)),
+        failed_attempts INTEGER NOT NULL DEFAULT 0,
+        locked_until TEXT,
+        recovery_hash TEXT,
+        recovery_attempts INTEGER NOT NULL DEFAULT 0,
+        recovery_locked_until TEXT,
+        email TEXT
+    )""")
+    columns = ("id, username, password_hash, role, is_active, must_change_password, failed_attempts, locked_until, "
+               "recovery_hash, recovery_attempts, recovery_locked_until, email")
+    conn.execute(f"INSERT INTO users_new ({columns}) SELECT {columns} FROM users")
+    conn.execute("DROP TABLE users")
+    conn.execute("ALTER TABLE users_new RENAME TO users")
+    conn.execute("CREATE UNIQUE INDEX idx_users_email ON users (email COLLATE NOCASE) WHERE email IS NOT NULL")
+    conn.execute(f"INSERT INTO email_codes ({code_columns}) SELECT {code_columns} FROM _saved_email_codes")
+    conn.execute("DROP TABLE _saved_email_codes")
+
+
+def _upgrade_v10(conn: sqlite3.Connection) -> None:
+    """Payment reference (bKash / Nagad / card transaction ID) on invoices."""
+    conn.execute("ALTER TABLE invoices ADD COLUMN payment_ref TEXT NOT NULL DEFAULT ''")
+    conn.execute("CREATE INDEX idx_invoices_payment_ref ON invoices (payment_ref)")
+
+
 UPGRADES: dict[int, Callable[[sqlite3.Connection], None]] = {
     2: _upgrade_v2, 3: _upgrade_v3, 4: _upgrade_v4, 5: _upgrade_v5, 6: _upgrade_v6, 7: _upgrade_v7,
-    8: _upgrade_v8}
+    8: _upgrade_v8, 9: _upgrade_v9, 10: _upgrade_v10}
 LATEST_VERSION = max(UPGRADES)
 
 

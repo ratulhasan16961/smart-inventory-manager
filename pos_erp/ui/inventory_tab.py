@@ -3,20 +3,19 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-
 from .. import config
 from ..money import plain
 from ..services import inventory_service
 from ..services.inventory_service import ProductForm
 from .context import AppContext
 from .dialogs.admin_dialogs import open_analytics, open_audit_logs, open_settings, open_stock_ledger
-from .dialogs.inventory_dialogs import open_barcode_generator, open_edit_product
+from .dialogs.inventory_dialogs import open_edit_product
+from .dialogs.label_dialogs import open_barcode_generator
 from .dialogs.purchasing_dialogs import open_purchase_orders, open_suppliers
 from .dialogs.report_dialogs import open_reports
 from .dialogs.sales_dialogs import open_returns
 from .widgets import FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, handle_errors, make_tree
 
-# (label, widget kind, row, column, width)
 FIELDS = (
     ("Name", "entry", 0, 0, 15), ("Category", "combo", 0, 2, 13), ("Buying Price", "entry", 0, 4, 12),
     ("Selling Price", "entry", 1, 0, 15), ("Stock", "entry", 1, 2, 15), ("Min Alert", "entry", 1, 4, 12),
@@ -79,7 +78,7 @@ class InventoryTab:
         for index, (text, handler, color, permission, text_color) in enumerate(specs):
             button = CanvasButton(buttons, text, handler, color, text_color, width=135, height=30)
             button.grid(row=index // 3, column=index % 3, padx=4, pady=3)
-            button.set_enabled(ctx.can(permission))  # role-based: greyed out instead of error popups
+            button.set_enabled(ctx.can(permission))
 
     def _build_search(self, parent) -> None:
         bar = tk.Frame(parent, bg="#f4f6f9")

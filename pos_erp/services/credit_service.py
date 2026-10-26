@@ -24,7 +24,7 @@ ENTRY_TYPES = ("CHARGE", "PAYMENT", "CREDIT_NOTE", "ADJUSTMENT")
 PERM_VIEW = "customers.lookup"
 PERM_CREDIT_SALE = "sales.create"
 PERM_COLLECT = "sales.create"
-PERM_MANAGE = "settings.manage"
+PERM_MANAGE = "reports.view"
 
 
 def sale_methods(session: Session) -> tuple[str, ...]:

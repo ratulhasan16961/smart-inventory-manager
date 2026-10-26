@@ -1,10 +1,11 @@
-"""Settings > Backup & Reminders: backup copy folder, WhatsApp reminder message, daily summary email."""
+"""Settings > Backup & Reminders: backup copy folder, WhatsApp reminder message, daily summary email, updates."""
 from __future__ import annotations
 
 import tkinter as tk
+import webbrowser
 from tkinter import filedialog, messagebox, ttk
 
-from ...services import business_service, digest_service, mirror_service
+from ...services import business_service, digest_service, mirror_service, update_service
 from ..context import AppContext
 from ..widgets import DARK, FONT, LABEL_STYLE, WHITE, CanvasButton, create_styled_entry, handle_errors
 
@@ -15,7 +16,7 @@ class ToolsDialog:
         profile = business_service.get_profile(ctx.conn)
         self.win = tk.Toplevel(ctx.root)
         self.win.title("Backup & Reminders")
-        self.win.geometry("680x820")
+        self.win.geometry("700x820")
         self.win.config(bg=WHITE)
         self.entries: dict[str, tk.Entry] = {}
 
@@ -49,8 +50,10 @@ class ToolsDialog:
 
         buttons = tk.Frame(self.win, bg=WHITE)
         buttons.pack(pady=14)
-        CanvasButton(buttons, "Save", self.save, "#198754", width=120, height=32).pack(side="left", padx=5)
-        CanvasButton(buttons, "📧 Send summary now", self.send_summary, "#6f42c1", width=190, height=32).pack(
+        CanvasButton(buttons, "Save", self.save, "#198754", width=110, height=32).pack(side="left", padx=5)
+        CanvasButton(buttons, "📧 Send summary now", self.send_summary, "#6f42c1", width=180, height=32).pack(
+            side="left", padx=5)
+        CanvasButton(buttons, "⬆ Check for updates", self.check_updates, "#6c757d", width=180, height=32).pack(
             side="left", padx=5)
 
     def _heading(self, text: str) -> None:
@@ -101,6 +104,16 @@ class ToolsDialog:
         self.save(notify=False)
         address = digest_service.send(self.ctx.conn, self.ctx.session)
         messagebox.showinfo("Daily summary", f"The summary was sent to {address}.", parent=self.win)
+
+    @handle_errors
+    def check_updates(self) -> None:
+        self.win.update_idletasks()
+        info = update_service.check()
+        if not info.newer:
+            messagebox.showinfo("Up to date", f"You have the latest version ({info.current}).", parent=self.win)
+        elif messagebox.askyesno("Update available", f"Version {info.latest} is available (you have {info.current}).\n\n"
+                                                      "Open the download page?", parent=self.win):
+            webbrowser.open(info.url)
 
 
 def open_tools(ctx: AppContext) -> ToolsDialog:

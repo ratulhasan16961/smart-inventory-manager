@@ -67,16 +67,23 @@ def _redeemable_value(conn: sqlite3.Connection, items: list, discount, phone: st
 def checkout_with_payment(conn: sqlite3.Connection, session: Session, items: Iterable[tuple[int, int]],
                           discount="0", tax_rate="0", payment_method: str | None = None,
                           customer_name: str = "", customer_phone: str = "", tendered=None,
-                          redeem_points=0):
+                          redeem_points=0, payment_ref: str = ""):
     """Normal checkout plus the amount received / change and optional loyalty redemption, all in ONE
     transaction: if the cash is too little or the points are not valid, the whole sale is rolled back.
     Redeemed points become part of the invoice discount (and are recorded separately).
 
     Credit (baki): with payment_method == credit_service.CREDIT_METHOD the customer's phone number is required,
     `tendered` is what the customer pays now (blank = nothing), and the rest goes on the customer's account
-    (refused when it would pass the credit limit, and the whole sale rolls back)."""
+    (refused when it would pass the credit limit, and the whole sale rolls back).
+
+    payment_ref is the transaction ID of a card / bKash / Nagad payment (not for cash or credit)."""
     payment_method = payment_method or cash_method()
     credit = payment_method == credit_service.CREDIT_METHOD
+    ref = (payment_ref or "").strip()
+    if len(ref) > 40:
+        raise ValidationError("The payment reference is too long (max 40 characters).")
+    if ref and (credit or payment_method == cash_method()):
+        raise ValidationError("A payment reference (transaction ID) only applies to card and mobile payments.")
     if credit:
         session.require(credit_service.PERM_CREDIT_SALE)
     items = list(items)
@@ -100,7 +107,8 @@ def checkout_with_payment(conn: sqlite3.Connection, session: Session, items: Ite
         else:
             received, change = payment_amounts(invoice.total_cents, payment_method, tendered)
             conn.execute("UPDATE invoices SET tendered_cents = ?, change_cents = ?, points_redeemed = ?, "
-                         "points_value_cents = ? WHERE id = ?", (received, change, points, value, invoice.id))
+                         "points_value_cents = ?, payment_ref = ? WHERE id = ?",
+                         (received, change, points, value, ref, invoice.id))
         if points:
             conn.execute("UPDATE customers SET loyalty_points = loyalty_points - ? WHERE phone = ?", (points, phone))
             audit.log(conn, session.username,
@@ -112,7 +120,7 @@ def checkout_with_payment(conn: sqlite3.Connection, session: Session, items: Ite
 
 def invoice_meta(conn: sqlite3.Connection, invoice_no: str) -> sqlite3.Row:
     row = conn.execute("SELECT tendered_cents, change_cents, status, voided_at, voided_by, void_reason, "
-                       "points_redeemed, points_value_cents FROM invoices WHERE invoice_no = ?",
+                       "points_redeemed, points_value_cents, payment_ref FROM invoices WHERE invoice_no = ?",
                        (invoice_no.strip(),)).fetchone()
     if row is None:
         raise NotFoundError("Invoice not found!")
@@ -130,14 +138,15 @@ def _like(text: str) -> str:
 
 def list_invoices(conn: sqlite3.Connection, session: Session, query: str = "", date_from: str = "",
                   date_to: str = "", limit: int = 300) -> list[sqlite3.Row]:
+    """`query` matches the invoice number, customer name, phone or the payment reference (transaction ID)."""
     session.require("invoices.view")
     sql = ("SELECT invoice_no, created_at, customer_name, customer_phone, total_cents, payment_method, cashier, "
            "status FROM invoices WHERE 1 = 1")
     params: list = []
     if query.strip():
         sql += (" AND (invoice_no LIKE ? ESCAPE '\\' OR customer_name LIKE ? ESCAPE '\\' "
-                "OR customer_phone LIKE ? ESCAPE '\\')")
-        params += [_like(query)] * 3
+                "OR customer_phone LIKE ? ESCAPE '\\' OR payment_ref LIKE ? ESCAPE '\\')")
+        params += [_like(query)] * 4
     if date_from.strip():
         sql += " AND created_at >= ?"
         params.append(f"{dayrange.parse_day(date_from):%Y-%m-%d} 00:00:00")

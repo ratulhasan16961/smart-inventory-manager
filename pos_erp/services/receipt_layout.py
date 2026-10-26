@@ -24,6 +24,7 @@ class ReceiptData:
     tax_cents: int = 0
     total_cents: int = 0
     payment_method: str = "Cash"
+    payment_ref: str = ""
     cash_method: str = "Cash"
     tendered_cents: int | None = None
     change_cents: int | None = None
@@ -62,6 +63,8 @@ def render(data: ReceiptData, width: int = 41) -> list[str]:
     if data.tax_cents:
         lines.append(f"Tax ({data.tax_rate}%): +{fmt(data.tax_cents)}")
     lines += [rule, kv("TOTAL" if credit else "TOTAL PAID", fmt(data.total_cents)), kv("Payment", data.payment_method)]
+    if data.payment_ref:
+        lines.append(kv("Ref", data.payment_ref))
     if data.payment_method == data.cash_method and data.tendered_cents is not None:
         lines += [kv("Received", fmt(data.tendered_cents)), kv("Change", fmt(data.change_cents or 0))]
     if credit:

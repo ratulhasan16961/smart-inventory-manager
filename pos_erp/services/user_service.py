@@ -11,7 +11,7 @@ from ..permissions import Session
 from ..security import hash_password
 from . import audit, auth_service
 
-ROLES = (config.ROLE_ADMIN, config.ROLE_CASHIER)
+ROLES = (config.ROLE_ADMIN, "Manager", config.ROLE_CASHIER)
 _USERNAME = re.compile(r"^[A-Za-z0-9._-]{3,32}$")
 LAST_ADMIN = "At least one active administrator is required."
 

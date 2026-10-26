@@ -30,7 +30,7 @@ def prepare_invoice(conn: sqlite3.Connection, invoice: Invoice, meta) -> Prepare
         subtotal_cents=invoice.subtotal_cents, discount_cents=invoice.discount_cents,
         points_redeemed=meta["points_redeemed"], points_value_cents=meta["points_value_cents"],
         tax_rate=format(invoice.tax_rate, "f"), tax_cents=invoice.tax_cents, total_cents=invoice.total_cents,
-        payment_method=invoice.payment_method, cash_method=config.PAYMENT_METHODS[0],
+        payment_method=invoice.payment_method, payment_ref=meta["payment_ref"], cash_method=config.PAYMENT_METHODS[0],
         tendered_cents=meta["tendered_cents"], change_cents=meta["change_cents"],
         paid_now_cents=meta["tendered_cents"] if on_credit else None,
         account_balance_cents=credit_service.balance_of_phone(conn, invoice.customer_phone) if on_credit else None,

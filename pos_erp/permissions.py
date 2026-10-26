@@ -56,3 +56,7 @@ class Session:
     def require(self, permission: str) -> None:
         if not self.can(permission):
             raise PermissionDenied(f"Your role ({self.role}) is not allowed to perform this action.")
+
+
+PERMISSIONS_BY_ROLE["Manager"] = ALL_PERMISSIONS - frozenset(
+    {"users.manage", "settings.manage", "system.restore", "lists.manage", "audit.view"})
