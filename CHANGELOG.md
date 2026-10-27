@@ -1,4 +1,9 @@
 # Changelog
+## 2.7.1
+
+### Fixed
+- The app now reports its real version number. 2.7.0 still said 2.5.0, which made the update check compare wrongly.
+
 ## 2.7.0
 
 ### Added

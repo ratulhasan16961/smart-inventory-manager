@@ -1,6 +1,6 @@
 [project]
 name = "pos-erp"
-version = "2.5.0"
+version = "2.7.1"
 description = "Enterprise POS & ERP System (Tkinter + SQLite)"
 readme = "README.md"
 license = { text = "MIT" }
