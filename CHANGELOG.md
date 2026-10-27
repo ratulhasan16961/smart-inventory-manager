@@ -1,4 +1,17 @@
 # Changelog
+## 2.7.0
+
+### Added
+- Code 128 barcode labels: preview, A4 sheets (3 x 8), start at any label position.
+- Payment reference (bKash / Nagad / card transaction ID) at the till, on receipts and in invoice search.
+- Manager role (void, returns, reports, purchasing; no users, shop settings or restore).
+- Backup copy to a second folder (cloud-synced folder, USB drive or network share).
+- WhatsApp payment reminders and customer account statements (PDF).
+- Daily summary email (send now, after closing a shift, or from a scheduler) and the net profit report.
+- Owner's phone view: read-only, token-protected web page (python3 -m scripts.owner_view).
+- Update check against the latest GitHub release.
+- Database upgrades v9 (users table rebuilt for the Manager role) and v10 (payment reference).
+
 ## 2.6.0
 
 ### Added
